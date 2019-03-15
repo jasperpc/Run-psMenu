@@ -67,7 +67,7 @@ foreach ($system in $pc)
     {
         if ($i -ne 0)
         {
-            Write-Host "`nThe other "$i " port(s) are closed on $system"
+            Write-Host <#-Object#> "`nThe other "$i " port(s) are closed on $system"
         }        
     }
     else
