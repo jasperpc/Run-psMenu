@@ -1,4 +1,25 @@
-﻿
+﻿<#
+.NAME
+    Get-SystemsList.ps1
+.SYNOPSIS
+ Return a list of systems to the script that calls it
+.DESCRIPTION
+ 2019-06-14
+ Written by Jason Crockett - Laclede Electric Cooperative
+ Function Get-PCList returns a list of systems to the script that calls it
+ Function Identify-PCName takes the list of pcnames and makes sure it can be 
+ handled correctly
+.PARAMETERS
+ N/A
+.EXAMPLE
+ .\Get-SystemsList.ps1 []
+.SYNTAX
+ .\Get-SystemsList.ps1 []
+.REMARKS
+ To see the examples, type: help Get-SystemsList.ps1 -examples
+ To see more information, type: help Get-SystemsList.ps1 -detailed
+.TODO
+#>
 function chcolor($p1,$p2,$p3,$NC){
             Write-host $t4 -NoNewline
             Write-host "$p1 " -NoNewline
@@ -12,35 +33,17 @@ function chcolor($p1,$p2,$p3,$NC){
 function Get-PCList()
 {$ADorCSL = $null
     $p1 = "Type AD to use active computers listed in Active Directory or";
-    $p2 = " C or S ";
-    $p3 = "to type your own comma separated list -OR- for Servers only";
+    $p2 = " C or S or F";
+    $p3 = " to type your own comma separated list -OR- for Servers only - OR File";
     $NC = "Yellow";
     chcolor $p1 $p2 $p3 $NC;$ADorCSL = Read-Host "`t`t"
-<# 
-    # Option to add a pclist from a file as a source
-    $pclist use a file as an optional data source
-    $pclist = Get-Content .\pl.txt # Get CSV list from this file listed in the current directory
-    $pclist
-    $pclist.GetType()
-#>
-<#
-            # Run in a "foreach ($pcline in $PCList){}" statement
-            # This if statement could potentially be moved to inside the Get-PCList function, but it might need to be modified to do so
-            if ($pcline.name -eq $null)
-            {
-                $pc = $pcline
-            }
-            else
-            {
-                $pc = $pcline.name
-            }
-#>
 if ($ADorCSL -eq "AD")
     {
         # Get the list from computers listed in Active Directory
-        # $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'
+        # $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"' # (use this line if you don't care what OU the systems are in)
         # Filter out AD for Enabled systems in the Domain Computers and Domain Controllers OUs
-        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"' |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"}
+        # Add more properties or * if you need more returned with the query
+        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'-Properties Enabled,Name,IPv4Address,DistinguishedName |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"} 
     }
 elseif ($ADorCSL -eq "C")
     {
@@ -63,6 +66,17 @@ elseif ($ADorCSL -eq "S")
         $Global:PCList = Get-ADComputer -Filter {OperatingSystem -like "*server*" -and Enabled -eq $true} |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"}
 
     }
+elseif ($ADorCSL -eq "F")
+{
+    if (($PCListFile = Read-Host "Enter a file name containing a list of systems. [Enter] to use default: .\pl.txt") -eq "") {$PCListFile = ".\pl.txt"}
+    # $PCListFile = Read-Host "Enter a file name containing a list of systems. Default is: .\pl.txt"
+    # Option to add a pclist from a file as a source
+    # $Global:PCList use a file as an optional data source
+    $Global:PCList = Get-Content $PCListFile # .\pl.txt # Get CSV list from this file listed in the current directory
+    Write-Warning "Getting systems from $PCListFile"
+    # $Global:PCList
+    # $Global:PCList.GetType()
+}
 Else
     {
     $opt1 = $null
@@ -77,10 +91,10 @@ Else
         # Get the username for the currently logged-in user
             # $proc = gwmi win32_process -Filter "Name = 'explorer.exe'"
             # $proc.GetOwner().user
-        $pgo = (gwmi win32_process -Filter "Name = 'explorer.exe'" -ComputerName lec142).GetOwner().user 
-        [script]$PCList = $pscn
+        $pgo = (gwmi win32_process -Filter "Name = 'explorer.exe'" -ComputerName $pscn).GetOwner().user 
+        $Global:PCList = $pscn
         # need to standardize on how this list is presented throughout the script then remove this line: Use just $PCList throughout the script.
-        $computers = $PCList
+        $computers = $Global:PCList
         }
     Else
         {
