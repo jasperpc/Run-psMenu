@@ -1,14 +1,26 @@
-﻿#    "Discover boot times (from select systems)"
+﻿<#
+.NAME
+    Get-BootTime.ps1
+.SYNOPSIS
+ Discover boot times (from select systems)
+.DESCRIPTION
+ (c) 2019
+ Written by Jason Crockett - Laclede Electric Cooperative
+ Used to discover boot times (from select systems)
+.PARAMETERS
+    [array]$Global:PCList
+.EXAMPLE
+    .\Get-BootTime.ps1 []
+    .\Start-MultiThreads.ps1 .\Get-BootTime.ps1
+.SYNTAX
+    .\Get-BootTime.ps1 []
+.REMARKS
+    To see the examples, type: help Get-BootTime.ps1 -examples
+    To see more information, type: type: help Get-BootTime.ps1 -detailed
+#>
 
 Param([array]$Global:PCList)
 
-
-if ($Global:PCList -eq $null)
-{
-    Clear-Host
-    . .\Get-SystemsList.ps1 # load functions in .ps1
-    Get-PCList
-}
 function Identify-PCName
 {
     # This if statement could potentially be moved to inside the Get-PCList function, but it might need to be modified to do so
@@ -21,33 +33,46 @@ function Identify-PCName
         $Global:pc = $Global:pcline.name
     }
 }
+
 function Discover-BootTime
 {
+    if ($Global:PCList -eq $null)
+        {
+            Clear-Host
+        . .\Get-SystemsList.ps1 # load functions in .ps1
+            Get-PCList
+        }
 $ObjectOut = foreach($Global:pcline in $Global:pclist)
     {
+            $GWMOResult=$null
             $DateCol=$null
             $TimeCol=$null
         Identify-PCName
-        <# Run Command by connecting to PC using Invoke-Expression combined with psexec
-           $script:data = Invoke-Expression "& `".\PSexec.exe`" \\$Global:pc systeminfo |find `"Boot Time`""
-        #>
-        # Run Command by connecting to PC using Invoke-Command
-        $data = Invoke-Command -ComputerName $Global:pc -ScriptBlock {systeminfo |find "Boot Time"} -ErrorAction SilentlyContinue
-        # Regex pattern to group and strip boot date and time
-        $Pattern1 = '^(\w*\s*\w*\s*\w*)(:\s*)(\d*\/\d*\/\d*)(,\s)(\d*:\d*:\d*\s[A-Z]*)'
-        if ($data -ne $null)
+        $GWMOResult = Get-WmiObject win32_operatingsystem -ComputerName $Global:pc |select csname, @{Label='LastBootUpDate';expression={$_.converttodatetime($_.lastbootuptime).tostring("yyyy/MM/dd")}}, @{Label='LastBootUpTime';expression={$_.converttodatetime($_.lastbootuptime).tostring("hh:mm")}}
+        if($GWMOResult -eq $null)
         {
-            $DateCol = ([regex]::Matches($data, $Pattern1).Groups[3].Value)
-            $TimeCol = ([regex]::Matches($data, $Pattern1).Groups[5].Value)
+            # Run Command by connecting to PC using Invoke-Command if WMI is blocked
+            $data = Invoke-Command -ComputerName $Global:pc -ScriptBlock {systeminfo |find "Boot Time"} -ErrorAction SilentlyContinue
+            # Regex pattern to group and strip boot date and time
+            $Pattern1 = '^(\w*\s*\w*\s*\w*)(:\s*)(\d*\/\d*\/\d*)(,\s)(\d*:\d*:\d*\s[A-Z]*)'
+            if ($data -ne $null)
+            {
+                $DateCol = ([regex]::Matches($data, $Pattern1).Groups[3].Value)
+                $TimeCol = ([regex]::Matches($data, $Pattern1).Groups[5].Value)
+            }
+        }
+        Else
+        {
+            $DateCol = $GWMOResult.LastBootUpDate
+            $TimeCol = $GWMOResult.LastBootUpTime
         }
         # Build Object
         $OBProperties = @{'__Server'=$Global:pc;
             'BootDate'=$DateCol;
             'BootTime'=$TimeCol}
         New-Object -TypeName PSObject -Prop $OBProperties
-        Write-Host "." -NoNewline
     }
-$ObjectOut |select *
+$ObjectOut |sort BootDate,__Server |select * # ComputerName
 }
 Discover-BootTime # Comment out this line if this function will only be run when called from elsewhere
 
