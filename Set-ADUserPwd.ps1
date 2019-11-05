@@ -1,12 +1,33 @@
-﻿# clear-host
+﻿<#
+.NAME
+ Set-ADUserPwd.ps1
+.SYNOPSIS
+ This will prompt you for a username for whom you wish to change the password options
+.DESCRIPTION
+ 2019-06-19
+ Written by Jason Crockett - Laclede Electric Cooperative
+ This will prompt you for a username for whom you wish to change the password options
+.PARAMETERS
+ N/A
+.EXAMPLE
+ .\Set-ADUserPwd.ps1 []
+.SYNTAX
+ .\Set-ADUserPwd.ps1 []
+.REMARKS
+ To see the examples, type: help Set-ADUserPwd.ps1 -examples
+ To see more information, type: help Set-ADUserPwd.ps1 -detailed
+.TODO
+#>
+# clear-host
 $global:AnotherPW = "No"
 Write-Output = "This will prompt you for a username for whom you wish to change the password options"
 $PromptADUser =Read-Host "Enter samaccountname here"
 $ADUFilter = "$PromptADUser"
 $OK2SetPW=$null
 $OK2ChgPW=$null
-$OK2ChgPW = Read-Host "`nType yes if you wish to force user:$ADUFilter to create a new password now."
-$SearchBase = "CN=Users,DC=lec,DC=lan"
+$OK2ChgPW = Read-Host "`nType yes if you wish to force this user to change the password : $ADUFilter "
+$SearchBase = Read-Host "Type the Search Base in the following format: CN=OUisOptional,DC=subdomain,DC=domain"
+$PWRecommendedAge = Read-Host "What is the preferred Password age? default = 999"
 
 function PromptChgPwd ()
 {
@@ -36,7 +57,7 @@ if ($OK2ChgPW -eq "yes")
     }
 Else
     {
-        $OK2SetPW = Read-Host "`nType yes if you wish to create a new password now for $ADUFilter?"    
+        $OK2SetPW = Read-Host "`nType yes if YOU wish to create a new password NOW for $ADUFilter?"    
         if ($OK2SetPW -eq "yes")
         {
             Set-Pwd
@@ -47,13 +68,19 @@ Else
 $list = Read-Host "`nIf you want to see the list of changed and unchanged users / passwords, type yes"
 if ($list -eq "yes")
 {
-    # $Completed = get-aduser -filter <#(PasswordLastSet -gt "5/16/2016") -AND #> '(mail -notlike "healthmailbox*")' -SearchBase $SearchBase  -Properties * |where {$_.enabled -eq $true} |select Samaccountname,passwordlastset,cannotchangepassword,passwordexpired,lockedout,mail|sort passwordlastset |ft -AutoSize
-    $Completed = get-aduser -filter <#(PasswordLastSet -gt "5/16/2016") -AND #> '(mail -notlike "healthmailbox*")' -SearchBase $SearchBase  -Properties * |where {$_.enabled -eq $true} |select Samaccountname,passwordlastset,cannotchangepassword,passwordexpired,lockedout,mail|sort passwordlastset |ft -AutoSize
+    $Completed = get-aduser -filter '(mail -notlike "healthmailbox*")' -SearchBase $SearchBase  -Properties * |where {$_.enabled -eq $true} |select Samaccountname,passwordlastset,cannotchangepassword,passwordexpired,lockedout,mail|sort passwordlastset |ft -AutoSize
     $completed
-    "Completed: $Completed.count"
-    $Waiting =  get-aduser -filter '(PasswordLastSet -lt "5/15/2016") -AND (mail -notlike "healthmailbox*")' -SearchBase $SearchBase  -Properties * |where {$_.enabled -eq $true} |select Samaccountname,passwordlastset,cannotchangepassword,passwordexpired,lockedout,mail|sort passwordlastset |ft -AutoSize
+    $CCount = $Completed.count
+    "Completed: $CCount"
+    $PWRecommendedAge = Read-Host "What is the preferred Password age? Default: -999"
+    $GD1 = (get-date -date ($Global:CDateTime.adddays($PWRecommendedAge)) -uformat "%m/%d/%y")
+    $Waiting = get-aduser -filter '(PasswordLastSet -lt $GD1) -AND (mail -notlike "healthmailbox*")' -SearchBase $SearchBase  -Properties * |where {$_.enabled -eq $true} |select Samaccountname,passwordlastset,cannotchangepassword,passwordexpired,lockedout,mail|sort passwordlastset,SamAccountName |ft -AutoSize
     $Waiting
-    "Waiting: $Waiting.count"
+    
+    (get-date -date ($Global:CDateTime.adddays(-365)) -uformat "%m/%d/%y")
+    
+    $WCount = $Waiting.count
+    "Waiting: $WCount"
 }
 
 $global:AnotherPW = Read-host "`nIf you wish to change another password now type Yes "
