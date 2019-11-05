@@ -34,23 +34,28 @@
     To see more information, type: help Start-MultiThreads.ps1 -detailed
 #>
 Param([string]$ScriptFile = $(Read-Host "Enter the script path and filename"),
+    [string]$ScriptArgs = $(. .\Get-SystemsList.ps1;Get-PCList), #$null, # Not working yet - have conflicts with pcname arg
     [int]$MaxThreads = 20,
     [int]$Sleeptimer = 500,
     [int]$MaxWaitAtEnd = 600,
     [string]$OutputType = "Text")
 Clear-Host
-. .\Get-SystemsList.ps1 # load functions in .ps1
-Get-PCList
+# $Global:PCList = $null
+# . .\Get-SystemsList.ps1 # load functions in .ps1
+#Get-PCList
 # Start All Jobs
+# $Global:PCList
 $i = 0
 # Capture a list of jobs so we can close only jobs created through this script
 [Array]$JobList = $null
 foreach($Global:PCLine in $Global:PCList)
 {
+    $Complete = Get-Date
     # Identify-PCName isolates the system name regardless of input type
     Identify-PCName
+    $Global:PC
     # Uncomment the following line to view the Name of the systems as they are processed
-    # "The computer is $Global:PC"
+    #Write-Warning "The computer is $Global:PC"
     # Check for number of open threads
     # Wait for some threads to close if necessary prior to opening more
     While($(Get-job -State Running).count -ge $MaxThreads)
@@ -58,7 +63,8 @@ foreach($Global:PCLine in $Global:PCList)
         Write-Progress -Activity "Creating Server List"`
                         -Status "Waiting for Threads to Close"`
                         -CurrentOperation "$i threads created - $($(get-job -state running).count) threads open"`
-                        -PercentComplete ($i / $Global:PCList.Count *100)
+                        -PercentComplete ($i / $Global:PCList.Count *100)`
+                        -Completed
         Start-Sleep -Milliseconds $Sleeptimer
     }
     $Gdt = Get-Date -Format yyyyMMddHHmmfffff
@@ -66,11 +72,25 @@ foreach($Global:PCLine in $Global:PCList)
     $JobList+=$JbName #Get-Variable -Name $JbName ([char]$_) -ValueOnly
     # Starting job - $Global:pc"
     $i++
+    $ArgList = $ScriptFile +" " + $Global:ScriptArgs # " + $Global:pc + " 
     Start-job -filepath $ScriptFile -ArgumentList $Global:pc -name $JbName |Out-Null
-    Write-Progress -Activity "Creating Server List"`
+    <#
+    $ScriptBlock = {($ScriptFile)} #  $ScriptArgs
+    Start-job -ScriptBlock $ScriptBlock -ArgumentList 'no', 'test' -name $JbName |Out-Null
+    #>
+    # Invoke-Command -ComputerName ($Global:pc) -ScriptBlock {$ScriptFile} -JobName $JbName -ThrottleLimit 16 -AsJob
+    # Start-job -ScriptBlock {invoke-expression "& `"$SCriptFile`" $Global:pc $ScriptArgs"} -Name $JbName |out-null
+        Write-Progress -Activity "Creating Server List"`
             -Status "Waiting for Threads to Close"`
             -CurrentOperation "$i threads created - $($(get-job -state running).count) threads open"`
             -PercentComplete ($i / $Global:PCList.Count *100)
+        <#
+        If ($(New-TimeSpan $Complete $(Get-Date)).totalseconds -ge $MaxWaitAtEnd)
+        {
+            "Killing all jobs still running . . ."
+            Get-Job -State Running | Remove-Job -Force # maybe just do a stop-job here rather than removing the job here...?
+        }
+        #>
 }
 
 # Wait for all jobs to finish
@@ -86,15 +106,21 @@ While($(get-job -State Running).count -gt 0)
     Write-Progress -Activity "Creating Server List"`
                 -Status "$($(Get-Job -State Running).count) threads remaining"`
                 -CurrentOperation "$ComputersStillRunning"`
-                -PercentComplete ($(Get-job -State Completed).count / $(Get-job).count * 100)
+                -PercentComplete ($(Get-job -State Completed).count / $(Get-job).count * 100)`
+                -Completed
     Start-Sleep -Milliseconds $Sleeptimer
 }
 
 Write-Warning "Reading all jobs"
 If($OutputType -eq "Text")
 {
-    Get-job |receive-job |Select-Object @{Name="ComputerName"; Expression="__Server"} ,* -ExcludeProperty RunspaceId|
-        select * -ExcludeProperty __Server|Sort-Object|ft -AutoSize -Wrap
+    #foreach ($JBLine in $JobList)
+    #{
+        #$GTxtJb = 
+        Get-job |receive-job -Keep |Select-Object @{Name="ComputerName"; Expression="__Server"},* -ExcludeProperty RunspaceId |select * -ExcludeProperty __Server, RunspaceId |Sort-Object |ft -AutoSize -Wrap
+    #}
+    # $GTxtJb |gm
+    # Get-job |receive-job |Select-Object @{Name="ComputerName"; Expression="__Server"} ,* -ExcludeProperty RunspaceId|select * -ExcludeProperty __Server|Sort-Object |ft -AutoSize -Wrap
 }
 ElseIf($OutputType -eq "GridView")
 {
@@ -114,4 +140,7 @@ if ((Get-job).count -gt 0)
         }
     }
 }
+
+# $GTxtJb |select * |FT -AutoSize -Wrap
+# $GTxtJb |gm #FT -AutoSize -Wrap
 
