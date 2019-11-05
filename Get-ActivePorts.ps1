@@ -36,8 +36,10 @@
             Mandatory = $True,
             ParameterSetName = '')]
             [array]$port)
+
 if ($pc -eq $null)
 {
+    # Need to replace this with a call to the function that handles this in Run-psMenu.ps1
     [array]$pc = (Read-host "`nEnter a comma separated list of systems to scan.").Split(",") |%{$_.trim()}
 }
 if ($port -eq $null)
