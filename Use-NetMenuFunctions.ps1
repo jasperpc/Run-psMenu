@@ -1,6 +1,6 @@
 ﻿<#
 .NAME
-    Run-psMenu.ps1
+    Use-NetMenuFunctions.ps1
 .SYNOPSIS
     Provide menu system for running Powershell scripts
 .DESCRIPTION
@@ -18,12 +18,12 @@
     This parameter doesn't exist (Comps = list of computernames)
 .EXAMPLE
     "a command with a parameter would look like: (.\Get-DiskInfo.ps1 -comps dc)"
-        .\adutils.ps1 []
+        .\Use-NetMenuFunctions.ps1 []
 .SYNTAX
-    .\adutils.ps1 []
+    .\Use-NetMenuFunctions.ps1 []
 .REMARKS
-    To see the examples, type: help adutils.ps1 -examples
-    To see more information, type: help adutils.ps1 -detailed
+    To see the examples, type: help Use-NetMenuFunctions.ps1 -examples
+    To see more information, type: help Use-NetMenuFunctions.ps1 -detailed
 #>
 [CmdletBinding()] #(allows the use of parameter attributes)
 param(
