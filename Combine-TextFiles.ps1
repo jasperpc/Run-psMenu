@@ -1,6 +1,15 @@
-<#
+﻿<#
  Combine text files in a folder
  Originally used to combine Toshiba text (.trf) traffic reports
+ .TODO
+    take out the hard-coded parameter settings and replace with a read-host statement
+#>
+<#
+Insert the following function in another .ps1 to call this script
+Function Combine-TextFiles
+{
+Invoke-Expression -command '.\Combine-TextFiles.ps1 -ext ".trf" -Path "C:\Users\Public\Downloads\_Temp Clear Phone\TRAFFIC"'
+}
 #>
 [CmdletBinding()] #(allows the use of parameter attributes)
 param(
