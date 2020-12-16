@@ -414,9 +414,7 @@ Function Get-IPConfig()
  Adapted by Jason Crockett - Laclede Electric Cooperative
  2019-05-02
 .Parameter
- pclist (one or more computernames)
-.Example 
-.\Get-IPConfig.ps1
+ $Global:pclist (one or more computernames)
 
 .ToDo
     Fix RegEx for matching IP addresses
