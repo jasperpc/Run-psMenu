@@ -1,6 +1,6 @@
 ﻿<#
 .NAME
-    Use-PCInfoMenuFunctions.ps1
+    Use-MenuPCInfo.ps1
 .SYNOPSIS
     Provide menu system for identifying PC Information
 .DESCRIPTION
@@ -12,28 +12,19 @@
 .PARAMETERS
     Placeholder
 .EXAMPLE
-    "a command with a parameter would look like: (.\Use-PCInfoMenuMenuFunctions.ps1)"
-        .\Use-PCInfoMenuMenuFunctions.ps1 []
+    "a command with a parameter would look like: (.\Use-MenuPC.ps1)"
+        .\Use-MenuPC.ps1 []
 .SYNTAX
-    .\Use-PCInfoMenuMenuFunctions.ps1 []
+    .\Use-MenuPC.ps1 []
 .REMARKS
-    To see the examples, type: help Use-PCInfoMenuMenuFunctions.ps1 -examples
-    To see more information, type: help Use-PCInfoMenuMenuFunctions.ps1 -detailed"
+    To see the examples, type: help Use-MenuPC.ps1 -examples
+    To see more information, type: help Use-MenuPC.ps1 -detailed"
 .TODO
-    # Remove comment on pcinfo function(s) "Check version without parameters from Use-ADMenuFunctions.ps1 if this doen't work"
+    # Remove comment on pcinfo function(s) "Check version without parameters from Use-MenuAD.ps1 if this doen't work"
     Need to fix Get-NonDomPCinfo function Cred prompts *** Fix non-dom cred prompts ***
 #>
 
-# Enable AD and PS Update modules - only if this script is not called from Use-MainMenuFunctions.ps1
-# Import-Module ActiveDirectory
 Clear-Host
-<#
-# set Global and Script variables - only if this script is not called from Use-MainMenuFunctions.ps1
-. .\Get-SystemsList.ps1
-$CDate = Get-Date -UFormat "%Y%m%d"
-$Global:CDateTime = [datetime]::ParseExact($Global:CDate,'yyyymmdd',$null)
-#>
-# [BOOLEAN]$Global:PCInfoMenuExitSession=$false
 [BOOLEAN]$Global:ExitSession=$false
 $Get_AllPCInfo = "No"
 $Script:PCIt4 = "`t`t`t`t"
@@ -143,7 +134,7 @@ Function PCIMenu()
 switch($PCIMenuselect)
     {
         $PCMExit{$PCIMenuselect=$null;reload-PCmenu}
-        $GCred{Clear-Host;Get-Cred;$PCIMenuselect = $null;Reload-PCInfoMenu} # Called from Use-MainMenuFunctions.ps1
+        $GCred{Clear-Host;Get-Cred;$PCIMenuselect = $null;Reload-PCInfoMenu} # Called from Run-PSMenu.ps1
         $Get_PCList{Clear-Host;Get-PCList;Reload-PCInfoMenu}
         $Get_pcinfo{Clear-Host;Get-DInfo;Get-MemInfo;Get-CPUInfo;Get-BIOSSerialNumber;. ./Use-MenuNet.ps1;Call-Get-NICStatus;Get-ArchOSInfo;Reload-PromptPCInfoMenu}
         $Get_BIOSSerialNumber{Clear-Host; Get-BIOSSerialNumber;Reload-PromptPCInfoMenu}
@@ -187,7 +178,7 @@ Function Get-NonDomPCinfo()
     if (($DomName = Read-Host "Enter the domain name [Enter] to use default: $env:USERDNSDOMAIN") -eq "") {$DomName = $env:USERDNSDOMAIN}
     foreach($Global:pcLine in $Global:PCList)
     {
-        Identify-PCName # Called from Use-MainMenuFunctions.ps1
+        Identify-PCName # Called from Run-PSMenu.ps1
         If (Test-Connection $Global:pc -Count 1 -Quiet)
         {
         $sOS = Get-WmiObject -class Win32_OperatingSystem -Impersonation 3 -Credential "$DomName\administrator" -computername $Global:PC
