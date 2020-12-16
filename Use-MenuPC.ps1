@@ -1,6 +1,6 @@
 ﻿<#
 .NAME
-    Use-PCInfoMenuFunctions.ps1
+    Use-MenuPC.ps1
 .SYNOPSIS
     Provide menu system for identifying PC Information
 .DESCRIPTION
@@ -12,13 +12,13 @@
 .PARAMETERS
     Placeholder
 .EXAMPLE
-    "a command with a parameter would look like: (.\Use-PCInfoMenuMenuFunctions.ps1)"
-        .\Use-PCInfoMenuMenuFunctions.ps1 []
+    "a command with a parameter would look like: (.\Use-MenuPC.ps1)"
+        .\Use-MenuPC.ps1 []
 .SYNTAX
-    .\Use-PCInfoMenuMenuFunctions.ps1 []
+    .\Use-MenuPC.ps1 []
 .REMARKS
-    To see the examples, type: help Use-PCInfoMenuMenuFunctions.ps1 -examples
-    To see more information, type: help Use-PCInfoMenuMenuFunctions.ps1 -detailed"
+    To see the examples, type: help Use-MenuPC.ps1 -examples
+    To see more information, type: help Use-MenuPC.ps1 -detailed"
 .TODO
     Remove Windows Experience Index item
     Modify the Get-PCProcess function to query processes other than just the logon process
@@ -26,18 +26,9 @@
     Modify the Call-Get-SysEvents function to be a script called from the multi-threaded script
 #>
 
-# Enable AD and PS Update modules - only if this script is not called from Use-MainMenuFunctions.ps1
-# Import-Module ActiveDirectory
 Clear-Host
-<#
-# set Global and Script variables - only if this script is not called from Use-MainMenuFunctions.ps1
-. .\Get-SystemsList.ps1
-$CDate = Get-Date -UFormat "%Y%m%d"
-$Global:CDateTime = [datetime]::ParseExact($Global:CDate,'yyyymmdd',$null)
-#>
+
 $Use_MPCPath = Split-Path -Parent $PSCommandPath
-# [BOOLEAN]$Global:PCInfoMenuExitSession=$false
-# [BOOLEAN]$Global:ExitSession=$false
 $Script:PCt4 = "`t`t`t`t"
 $Script:PCd4 = "------------Use-PC Menu ($Global:PCCnt Systems currently selected)----------------"
 $Script:PCNC = $null
@@ -222,7 +213,7 @@ Function PCmenu()
 switch($PCmenuselect)
     {
 $PCMExit{$PCmenuselect=$null}
-$GCred{Clear-Host;Get-Cred;$PCmenuselect = $null;reload-PromptPCmenu} # Called from Use-MainMenuFunctions.ps1
+$GCred{Clear-Host;Get-Cred;$PCmenuselect = $null;reload-PromptPCmenu} # Called from Run-PSMenu.ps1
 $Get_PCList{Clear-Host;Confirm-Prompts;Get-PCList;reload-PromptPCmenu}
 $Use_MenuPCInfo{. .\Use-MenuPCInfo.ps1;PCIMenu}
 $Use_MenuPCApp{. .\Use-MenuPCApp.ps1;PCAppMenu}
@@ -342,7 +333,7 @@ Function Get-pcinfo($Global:BSN, $Global:OSI, $Global:CPUI, $Global:MI, $PI, $PP
     Write-Warning "Getting system information from the following systems:"
     foreach($Global:pcLine in $Global:PCList)
     {
-        Identify-PCName # Called from Use-MainMenuFunctions.ps1
+        Identify-PCName # Called from Run-PSMenu.ps1
         if ($Global:BSN -eq "Yes"){Get-BIOSSerialNumber}
         if ($Global:OSI -eq "Yes"){Get-ArchOSInfo}
         if ($Global:CPUI -eq "Yes"){Get-CPUInfo;Start-Sleep -Seconds 2}
