@@ -32,8 +32,14 @@
 
     To see the examples, type: help Start-MultiThreads.ps1 -examples
     To see more information, type: help Start-MultiThreads.ps1 -detailed
+.TODO
+    Combine $ScriptFile and $ScriptArgs if possible since the script currently works with both entered in position 1 anyways
+    See if there is a better way to wait for jobs to return before clearing out the progress bar - currently the progress
+       bar gets removed after all the jobs have started, not when they are completed. This was changed because the progress bar 
+       was refusing to go away in a timely manner.
+    Clean up comments
 #>
-Param([string]$ScriptFile = $(Read-Host "Enter the script path and filename"),
+Param([string]$ScriptFile = $(Read-Host "Enter the script path and filename"), # OK to include list of PCs after filename where applicable
     [string]$ScriptArgs = $(. .\Get-SystemsList.ps1;Get-PCList), #$null, # Not working yet - have conflicts with pcname arg
     [int]$MaxThreads = 20,
     [int]$Sleeptimer = 500,
@@ -72,8 +78,8 @@ foreach($Global:PCLine in $Global:PCList)
     $JobList+=$JbName #Get-Variable -Name $JbName ([char]$_) -ValueOnly
     # Starting job - $Global:pc"
     $i++
-    $ArgList = $ScriptFile +" " + $Global:ScriptArgs # " + $Global:pc + " 
-    Start-job -filepath $ScriptFile -ArgumentList $Global:pc -name $JbName |Out-Null
+    # $ArgList = $ScriptFile +" " + $Global:ScriptArgs # " + $Global:pc + " 
+    Start-job -filepath $ScriptFile -ArgumentList $Global:pc -Credential $Global:Cred -name $JbName |Out-Null
     <#
     $ScriptBlock = {($ScriptFile)} #  $ScriptArgs
     Start-job -ScriptBlock $ScriptBlock -ArgumentList 'no', 'test' -name $JbName |Out-Null
