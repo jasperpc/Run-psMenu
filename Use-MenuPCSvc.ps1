@@ -98,7 +98,7 @@ while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 7)
 switch($PCSvcMenuSelect)
     {
         $PCMExit{$PCIMenuselect=$null;reload-PCmenu}
-        $GCred{Clear-Host;Get-Cred;$PCIMenuselect = $null;Reload-PCSvcMenu} # Called from Use-MainMenuFunctions.ps1
+        $GCred{Clear-Host;Get-Cred;$PCIMenuselect = $null;Reload-PCSvcMenu} # Called from Run-PSMenu.ps1
         $Get_PCList{Clear-Host;Get-PCList;Reload-PCSvcMenu}
         $Get_ServiceLogons{Clear-Host;Get-ServiceLogons;Reload-PromptPCSvcMenu}
         $FW_Status{Clear-Host;FW-Status;Reload-PCSvcMenu}
@@ -334,7 +334,7 @@ The firewall on the default public location is much more restrictive
     { 
         $SvcObjResult = foreach($Global:pcLine in $Global:PCList)
         {
-            Identify-PCName # Called from Use-MainMenuFunctions.ps1
+            Identify-PCName # Called from Run-PSMenu.ps1
             If (Test-Connection $Global:pc -Count 1 -Quiet)
             {
                 $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
