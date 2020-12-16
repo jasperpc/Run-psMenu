@@ -100,7 +100,7 @@ switch($MADUmenuselect)
         $Get_ADUserList{$MADUmenuselect=$null;get-aduserlist;Reload-PromptMADUmenu}
         $ListChangePW{Force-NewADPassword;Reload-PromptMADUmenu}
         $FWStatus{Create-NewADUser;Reload-PromptMADUmenu}
-$adUserPW{Reset-ADUserPW;Reload-PromptMADUmenu}
+        $adUserPW{Reset-ADUserPW;Reload-PromptMADUmenu}
         $Disable_ADUser{Disable-ADUser;Reload-PromptMADUmenu}
         default
         {
@@ -159,8 +159,9 @@ function Create-NewADUser()
         $UseName = $Given+" "+$Surname
     }
 # Create the User Principal Name (UPN)
+    $EmailDomain = Read-Host "Please enter the email domain name (something like gmail.com)"
     $Email = $null
-    $Email = $SAM+"@lacledeelectric.com"
+    $Email = $SAM+"@$EmailDomain"
 
 # Use the following user as a template
     $TemplateSAM = $null
@@ -184,7 +185,7 @@ function Create-NewADUser()
     $NAUCMD = $Script:NA1+$Script:NA2+$Script:NA3
     $NAEnable = $Script:NA4
     $NAUCMD
-    New-ADUser (($NAUCMD).ToString())
+    New-ADUser (($NAUCMD).ToString()) -Confirm
 }
 # Force a user to change his/her AD Password
 function Force-NewADPassword()
