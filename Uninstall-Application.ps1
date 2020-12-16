@@ -37,10 +37,16 @@ param(
 #>
 Clear-Host
 # . .\Get-SystemsList.ps1;
-Get-PCList 
+# Use the following if we want to retain a single PCList across many menu functions 
+if ($Global:PCList -eq $null)
+{
+    Get-PCList
+}
 $PartialAppName = Read-host "What application do you wish to uninstall? (short form) " # "java" # 
 foreach ($Global:pcLine in $Global:pclist)
 {
+    If (Test-Connection $Global:pc -Count 1 -Quiet)
+    {
     Identify-PCName
     $i = 1
     $pcname = $Global:PC
@@ -48,45 +54,46 @@ foreach ($Global:pcLine in $Global:pclist)
     Write-Host "I'm searching for $PartialAppName on $Global:PC. Please wait..."
     $AppVerInfo = gwmi win32_product -ComputerName $Global:PC -filter "Name like '%$PartialAppName%'" 
     $appverInfo |select PSComputerName, Name, Version, IdentifyingNumber|sort-object Name
-            if ($appverinfo -eq $null)
+        if ($appverinfo -eq $null)
+        {
+            Write-host "Sorry, $PartialAppName was not found on $Global:PC"
+        }
+        Else
+        {
+            foreach ($AVIline in $AppVerInfo)
             {
-                Write-host "Sorry, $PartialAppName was not found on $Global:PC"
-            }
-            Else
-            {
-                foreach ($AVIline in $AppVerInfo)
+            # Break out the fields in the $AppVerInfo result into usable variables
+            # $IdentNum
+                $IdentNum = $AVIline |Select -Expandproperty IdentifyingNumber
+                $IdentNum = $IdentNum.Trim('{}')
+            # $IdentName / IdentStringName (this can be consolidated)
+                $IdentStringName = $AVIline|Select -Expandproperty Name
+            # $IdentVersion
+                $IdentVersion = $AVIline |select -expandproperty Version
+                $classKey="IdentifyingNumber=`"`{$Identnum`}`",Name=`"$IDentStringName`",Version=`"$IdentVersion`""
+            # Assign a variable so that it can be uninstalled
+                $WMICK = ([wmi]"\\$Global:PC\root\cimv2:Win32_product.$classkey")
+            # Write-host "..wmick.SystemProperties.."
+                $WMICK |select PSComputerName,Name,Version,IdentifyingNumber |ft
+                $Uninst = "N"
+                $Uninst = Read-Host "`nEnter `"Y`" if you want to Uninstall the above application. "
+                if ($Uninst -eq "Y")
                 {
-                # Break out the fields in the $AppVerInfo result into usable variables
-                # $IdentNum
-                    $IdentNum = $AVIline |Select -Expandproperty IdentifyingNumber
-                    $IdentNum = $IdentNum.Trim('{}')
-                # $IdentName / IdentStringName (this can be consolidated)
-                    $IdentStringName = $AVIline|Select -Expandproperty Name
-                # $IdentVersion
-                    $IdentVersion = $AVIline |select -expandproperty Version
-                    $classKey="IdentifyingNumber=`"`{$Identnum`}`",Name=`"$IDentStringName`",Version=`"$IdentVersion`""
-                # Assign a variable so that it can be uninstalled
-                    $WMICK = ([wmi]"\\$Global:PC\root\cimv2:Win32_product.$classkey")
-                # Write-host "..wmick.SystemProperties.."
-                    $WMICK |select PSComputerName,Name,Version,IdentifyingNumber |ft
-                    $Uninst = "N"
-                    $Uninst = Read-Host "`nEnter `"Y`" if you want to Uninstall the above application. "
-                    if ($Uninst -eq "Y")
+                    Write-Host "I'm uninstalling  $IDentStringName - $IDentVersion `n"
+                    # Uninstall the product
+                    if ($WMICK.Uninstall().returnvalue -eq 0) 
                     {
-                        Write-Host "I'm uninstalling  $IDentStringName - $IDentVersion `n"
-                        # Uninstall the product
-                        if ($WMICK.Uninstall().returnvalue -eq 0) 
-                        {
-                            write-host "Successfully uninstalled $IDentStringName from $($Global:PC)" 
-                        }
-                        else 
-                        {
-                            write-warning "Failed to uninstall $IDStringName from $($Global:PC)." 
-                        }
+                        write-host "Successfully uninstalled $IDentStringName from $($Global:PC)" 
                     }
-                # Increment to the next record found in the query (used for testing and reference only)
-                    $i ++
+                    else 
+                    {
+                        write-warning "Failed to uninstall $IDStringName from $($Global:PC)." 
+                    }
                 }
-
+            # Increment to the next record found in the query (used for testing and reference only)
+                $i ++
             }
+
+        }
+    }
 }
