@@ -1,6 +1,6 @@
 ﻿<#
 .NAME
-    Run-ADMenuFunctions.ps1
+    Use-MenuUserNGroup.ps1
 .SYNOPSIS
     Run Active Directory / Network Administrative tasks
 .DESCRIPTION
@@ -13,9 +13,9 @@
     This parameter doesn't exist (Comps = list of computernames)
 .EXAMPLE
     "a command with a parameter would look like: (.\Get-DiskInfo.ps1 -comps dc)"
-    .\Use-ADMenuFunctions.ps1 []
+    .\Use-MenuUserNGroup.ps1 []
 .SYNTAX
-    .\Use-ADMenuFunctions.ps1 []
+    .\Use-MenuUserNGroup.ps1 []
 .REMARKS
     
 .TODo
