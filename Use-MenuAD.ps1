@@ -1,6 +1,6 @@
 ﻿<#
 .NAME
-    Run-ADMenuFunctions.ps1
+    Run-MenuAD.ps1
 .SYNOPSIS
     Run Active Directory / Network Administrative tasks
 .DESCRIPTION
@@ -13,38 +13,23 @@
     This parameter doesn't exist (Comps = list of computernames)
 .EXAMPLE
     "a command with a parameter would look like: (.\Get-DiskInfo.ps1 -comps dc)"
-    .\Use-ADMenuFunctions.ps1 []
+    .\Run-MenuAD.ps1 []
 .SYNTAX
-    .\Use-ADMenuFunctions.ps1 []
+    .\Run-MenuAD.ps1 []
 .REMARKS
     
 .TODo
     
 #>
 
-<#
-[CmdletBinding()] #(allows the use of parameter attributes)
-param(
-        #[Parameter(Mandatory=$True)]
-            #[string[]]$comps = "$env:COMPUTERNAME",
-)
-#>
-
 # Enable AD modules
 Import-Module ActiveDirectory
 
-# Enable Exchange cmdlets (On an Exchange Server)
-# add-pssnapin *exchange* -erroraction SilentlyContinue 
-
 Clear-Host
-# set script variables
-# . .\Get-SystemsList.ps1
 [BOOLEAN]$Global:ExitSession=$false
-# Get Credentials for later wmi requests
-# $cred = Get-Credential "$env:USERDOMAIN\Administrator"
 
 $Script:t4 = "`t`t`t`t"
-$Script:ADd4 = "------------------------------Use-ADMenuFunctions-----------------------------------"
+$Script:ADd4 = "------------------------------Use-AD Menu-----------------------------------"
 $Script:NC = $null
 $Script:p1 = $null
 $Script:p2 = $null
@@ -67,7 +52,7 @@ Function chcolor($p1,$p2,$p3,$NC){
 # (Get-ADUser -filter 'SamAccountName -like $ADUser1' -Properties * |Select-Object -property @{n="ADUserInfo";e={$_.SamAccountName,$_.memberof}}|select -ExpandProperty ADUserInfo)
 Function ADmenu()
 {
-    while ($admenuselect -lt 1 -or $admenuselect -gt 12)
+    while ($admenuselect -lt 1 -or $admenuselect -gt 11)
     {
         Trap {"Error: $_"; Break;}        
         $MADNum = 0;Clear-host |out-null
@@ -87,7 +72,7 @@ Function ADmenu()
 		    $p2 = "New AD Objects ";
 		    $p3 = "by date created."; $NC = "yellow";chcolor $p1 $p2 $p3 $NC
 # Test LDAP connections to the AD DCs
-        $MADNum ++;$Run_Test_LDAP = $MADNum;
+        $MADNum ++;$Test_LDAP = $MADNum;
 		    $p1 =" $MADNum. `tTest";
 		    $p2 = "LDAP Connections ";
 		    $p3 = "to the Active Directory Domain Controllers "; $NC = "green";chcolor $p1 $p2 $p3 $NC
@@ -127,11 +112,6 @@ Function ADmenu()
             $p1 =" $MADNum. `tTest or ";
 		    $p2 = "Fix the secure channel (trust relationship) ";
 		    $p3 = "between computer and domain (with confirm/suspend)"; $NC = "yellow";chcolor $p1 $p2 $p3 $NC
-# Search an Exchange mailbox `n$t4`t (this will only work on Exchange and is included for reference only here.)
-        $MADNum ++;$Search_ExchMbox = $MADNum;
-		    $p1 =" $MADNum. `tSearch";
-		    $p2 = "Exchange Mailbox ";
-		    $p3 = "(reference only)"; $NC = "yellow";chcolor $p1 $p2 $p3 $NC
         Write-Host "$t4$Script:ADd4"  -ForegroundColor Green
         # Setting up the menu in this way allows you to move menu items around and have the numbering change automatically
         # It also allows you to put a word in the middle of the line and have it change color to be easier to see
@@ -143,16 +123,14 @@ Function ADmenu()
         $adExit{$admenuselect=$null;reloadADmenu}
         $GCred{Get-Cred;reloadadmenu}
         $Get_NewADObjects{$admenuselect=$null;Get-NewADObjects;reloadadmenu}
-        $Run_Test_LDAP{$admenuselect=$null;Invoke-Expression ".\Run-Test-LDAP.ps1";reloadadmenu}
+        $Test_LDAP{$admenuselect=$null;Invoke-Expression ".\Test-LDAP.ps1";reloadadmenu}
         $Get_ADSitSubnet{Get-ADSiteSubnet;reloadnetmenu}
         $Get_GpReport{$admenuselect=$null;Get-GPReport;reloadadmenu}
         $List_DomPCsLAPSPw{$admenuselect=$null;List-DomPCsLAPSPw;reloadadmenu}
         $Reset_ADUserPW{$admenuselect=$null;Reset-ADUserPW;reloadadmenu}
         $Run_ADCleanup{$admenuselect=$null;Run-ADCleanup;reloadadmenu}
         $Decommission_ADPC{$admenuselect=$null;Decommission-ADPC;reloadadmenu}
-        $TestFix_PCSecureChannel{$admenuselect=$null;TestFix-PCSecureChannel;reloadadmenu}
-        $Search_ExchMbox{$admenuselect=$null;Search-ExchMbox;reloadadmenu}
-        
+        $TestFix_PCSecureChannel{$admenuselect=$null;TestFix-PCSecureChannel;reloadadmenu}        
         default
         {
             $admenuselect = $null
@@ -388,26 +366,6 @@ Function ADNonExpiring()
 {
     # adapted from Netwrix
     Search-ADAccount -PasswordNeverExpires |Select-Object ObjectClass, Name, SAMAccountName, PasswordNeverExpires |ft # | Export-Csv c:\temp\users_password_expiration_false.csv
-}
-Function Search-ExchMbox()
-{
-    # https://technet.microsoft.com/en-us/library/dd298173(v=exchg.160).aspx
-    Clear-Host
-    # https://technet.microsoft.com/en-us/library/dd335083(v=exchg.160).aspx
-    # How to create and import session to Exchange to use exchange commands from local computer
-    # Import-PSSession $pssExch
-    Write-Host "`nRemote into Exchange13 and start a Windows PowerShell or Exchange Managment Shell`n" -ForegroundColor Yellow
-    Write-Host "Run the Recover-Messages.ps1 script from the default profile folder`n" -ForegroundColor Yellow
-    <#
-        # This code is not quire ready for prime-time yet. It needs work invoking the Recover-Messages.ps1 on the remote system or locally (exchange addin needed)
-        $pssExch = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri http://exchange13/PowerShell -Authentication Kerberos -Credential $cred
-        Import-PSSession $pssExch
-        $recMessages = ".\Recover-Messages.ps1"
-        invoke-command -FilePath "$recMessages"
-        Read-Host "Touch a Enter to continue"
-        Remove-PSSession $pssExch
-    #>
-
 }
 
 Function ADUser-Logons()
