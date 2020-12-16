@@ -16,7 +16,7 @@
 .PARAMETER TCPTimeOut
     Sets a timeout for TCP port query. (In milliseconds, Default is 1000)            
 .NOTES  
-    Name: Test-Port.ps1
+    Name: Test-Ports.ps1
     Author: Boe Prox
     DateCreated: 18Aug2010  
     List of Ports: http://www.iana.org/assignments/port-numbers
