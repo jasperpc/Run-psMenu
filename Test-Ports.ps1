@@ -159,7 +159,7 @@ function Test-Port{
                     #Create temporary holder  
                     $temp = "" | Select Server, Port, TypePort, Open, Notes                                    
                     #Create object for connecting to port on computer
-                    $udpobject = new-Object system.Net.Sockets.Udpclient($p)
+                    $udpobject = new-Object system.Net.Sockets.Udpclient #($p)
                     #Set a timeout on receiving message
                     $udpobject.client.ReceiveTimeout = $UDPTimeout
                     #Connect to remote machine's port              
