@@ -29,8 +29,6 @@ $Global:TomorrowDateTime = ($Global:CDateTime).AddDays(1)
 Clear-Host
 . .\Get-UsersList.ps1 # load functions in .ps1
 #}
-# Load the Disable-ADUser functions
-. .\Disable-ADUser.ps1
 Clear-Host
 
 # Prepare for menu
