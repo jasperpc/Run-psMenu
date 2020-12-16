@@ -17,9 +17,14 @@
 .REMARKS
     To see the examples, type: help Get-BootTime.ps1 -examples
     To see more information, type: type: help Get-BootTime.ps1 -detailed
+.TODO
+    When this script is called from Start-MultiThreads.ps1 the $Global:Cred variable is not passed correctly. 
+    This may affect the ability of the script to connect to a higher level server.
+    This script runs correctly when run by itself after $Global:Cred with a high enough permission set is in memory.
 #>
 
 Param([array]$Global:PCList)
+
 
 function Identify-PCName
 {
@@ -48,7 +53,7 @@ $ObjectOut = foreach($Global:pcline in $Global:pclist)
             $DateCol=$null
             $TimeCol=$null
         Identify-PCName
-        $GWMOResult = Get-WmiObject win32_operatingsystem -ComputerName $Global:pc |select csname, @{Label='LastBootUpDate';expression={$_.converttodatetime($_.lastbootuptime).tostring("yyyy/MM/dd")}}, @{Label='LastBootUpTime';expression={$_.converttodatetime($_.lastbootuptime).tostring("hh:mm")}}
+        $GWMOResult = Get-WmiObject win32_operatingsystem -ComputerName $Global:pc -Credential $Global:Cred |select csname, @{Label='LastBootUpDate';expression={$_.converttodatetime($_.lastbootuptime).tostring("yyyy/MM/dd")}}, @{Label='LastBootUpTime';expression={$_.converttodatetime($_.lastbootuptime).tostring("hh:mm")}}
         if($GWMOResult -eq $null)
         {
             # Run Command by connecting to PC using Invoke-Command if WMI is blocked
