@@ -61,14 +61,14 @@ foreach ($Global:pcLine in $Global:PCList)
 }
 function Get-FromLocal()
 {
-    #store output in $data variable
+    #store output in $Script:data variable
     $script:data = netstat -ano
     $Script:ps = Get-Process -ComputerName $Global:PC |select Id, ProcessName |Sort-Object ProcessName
 }
 
-function ProcLines()
+function NetProcLines()
 {
-    foreach ($line in $data[4..$data.Count])
+    foreach ($line in $Script:data[4..$Script:data.Count])
     {
     # Remove beginning and ending whitespace characters
     $line=$line.trim()
@@ -191,10 +191,12 @@ foreach ($Global:PCLine in $Global:PCList)
         }
 }
 # Count lines of output
-# $data.count
+# $Script:data.count
 
-ProcLines
+NetProcLines
 Test-Foreign
-"There were " + $error.Count + " foreign addresses that are not valid IPv4 addresses."
-$error
-
+$ShowErrorPrompt = Read-Host "There were " $error.Count " foreign addresses that are not valid IPv4 addresses. Do you wish to see the errors? (Y or N)"
+if ($ShowErrorPrompt -eq "Y")
+{
+    $error
+}
