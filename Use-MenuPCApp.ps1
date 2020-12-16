@@ -106,7 +106,7 @@ while ($PCAppMenuSelect -lt 1 -or $PCAppMenuSelect -gt 8)
         # Variables at the beginning of these lines in the switch are numbers assigned by their position in the above
         # configured PCAppMenu layout. This allows them to be moved around and let the numbers automatically adjust
         $AExit{$PCAppMenuSelect=$null;reload-PCmenu}
-        $GCred{Clear-Host;Get-Cred;$PCAppmenuselect = $null;Reload-PCAppMenu} # Called from Use-MainMenuFunctions.ps1
+        $GCred{Clear-Host;Get-Cred;$PCAppmenuselect = $null;Reload-PCAppMenu} # Called from Run-PSMenu.ps1
         $Get_PCList{Clear-Host;Get-PCList;Reload-PCAppMenu}
         $List_RecentUpdate{List-RecentUpdate;Reload-PromptPCAppMenu}
         $get_KB{get-KB;Reload-PromptPCAppMenu}
