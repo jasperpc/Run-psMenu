@@ -2,49 +2,81 @@
 .NAME
     Create-DMARCReport.ps1
 .SYNOPSIS
-    Read a DMARC .zip or .gz file extract the .xml and produce a human-readable report
+    Read a DMARC .zip or .gz file extract the .xml and produce a human-readable html report
 .DESCRIPTION
- 2019-11-07
- Zip handling written by https://techibee.com/powershell/reading-zip-file-contents-without-extraction-using-powershell/2152
+ 2020-11-13
+ Read-FileInZip function based on input from Kino101: https://stackoverflow.com/questions/37561465/how-to-read-contents-of-a-csv-file-inside-zip-file-using-powershell
+ For other Zip handling see: https://techibee.com/powershell/reading-zip-file-contents-without-extraction-using-powershell/2152
  Written by Jason Crockett - Laclede Electric Cooperative
 .PARAMETERS
     $ExportCSVFileName
 .EXAMPLE
-    .\Create-DMARCReport.ps1 []
+    .\Create-DMARCReport.ps1 [[-ExportCSVFileName] <string>]
 .SYNTAX
-    .\Create-DMARCReport.ps1 []
+    .\Create-DMARCReport.ps1 [[-ExportCSVFileName] <string>]
 .REMARKS
     To see the examples, type: help Create-DMARCReport.ps1 -examples
     To see more information, type: help Create-DMARCReport.ps1 -detailed
 .TODO
     Change the line determining $PCReadFolder if necessary to change the default folder
     Change the line determining $PCReadFileEXT if not reading .XML files in the compressed file
-    The .zip files may not close correctly and the process may need to be changed.
+    The .zip files do not close correctly and the process may need to be changed.
+    Add the filename(s) to the top table
+    Create a list of .zip and .gz files and XML files processed and save to $Global:ObjArray -> $ExportCSVFileName
 #>
 [cmdletbinding()]            
 param(            
- [Parameter(Mandatory=$false)] # $true
- # [string[]]$FileName,
+ [Parameter(Mandatory=$false)] 
  [String]$ExportCSVFileName            
 )
 [datetime]$epoch = '1970-01-01 00:00:00'
 #Exit if the shell is using lower version of dotnet            
-$dotnetversion = [Environment]::Version            
+$dotnetversion = [Environment]::Version
+$ScriptPath = Split-Path -Parent $PSCommandPath
 if(!($dotnetversion.Major -ge 4 -and $dotnetversion.Build -ge 30319)) {            
  write-error "You do not have Microsoft DotNet Framework 4.5 installed. Script exiting"            
  exit(1)            
 }            
+Clear-Host
+# Import dotnet libraries
+[Void][Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem')
+$Global:ObjArray = @()
+$TR = $null
+$HR = $null
+$R1 = $null
+$CDate = Get-Date -UFormat "%Y%m%d"
+$MoveFilePrompt = "No"
+$Global:CDateTime = [datetime]::ParseExact($CDate,'yyyymmdd',$null)
+$Script:PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+# if (($PCReadFolder = Read-Host "Enter a folder name containing the list of target files. [Enter] to use default: C:\Users\Public\Downloads\Security\Email_Web\New\") -eq "") {$PCReadFolder = "C:\Users\Public\Downloads\Security\Email_Web\New\"}
+$PCReadFolder = "C:\Users\Public\Downloads\Security\Email_Web\New\" # Comment this line and anable the if (($PCReadFolder line to allow for user prompt
+# if (($PCWriteFolder = Read-Host "Enter the folder name Where you wish to move the target files after processing. [Enter] to use default: C:\Users\Public\Downloads\Security\Email_Web\Old\") -eq "") {$PCReadFolder = "C:\Users\Public\Downloads\Security\Email_Web\Old\"}
+$PCWriteFolder = "C:\Users\Public\Downloads\Security\Email_Web\Old\" # Comment this line and anable the if (($PCReadFolder line to allow for user prompt
+# if (($PCReadFileEXT = Read-Host "Enter a file extension to select the target files. [Enter] to use default: .xml") -eq "") {$PCReadFileEXT = ".xml"}
+$PCReadFileEXT = ".xml" # Comment this line and enable the if (($PCReadFileEXT line to allow for user prompt
+Write-Output "`n"
+Write-Warning "Folder is: $PCReadFolder and final extension to parse is: $PCReadFileEXT"
+$Folder = $PCReadFolder |gci |sort LastWriteTime # GCI "C:\Users\Public\Downloads\Security\Email_Web\New*"
+$WorkingFiles = ($Folder |where {$_.name -like "*.zip" -or $_.name -like "*.xml" -or $_.name -like "*.gz"})
+[xml]$PCReadXMLFile = @()
+$MoveFilePrompt = "Yes" # if (($MoveFilePrompt = Read-Host "Type [Enter] move files from New to Old folder") -eq "") {$MoveFilePrompt = "Yes"}
+Write-Warning 'Files will be moved. Modify $MoveFilePrompt variable if you want to prompt to move files'
 
 
 function Read-FileInZip($ZipFilePath, $FilePathInZip) {
-    # https://stackoverflow.com/questions/37561465/how-to-read-contents-of-a-csv-file-inside-zip-file-using-powershell
+    # Kino101: https://stackoverflow.com/questions/37561465/how-to-read-contents-of-a-csv-file-inside-zip-file-using-powershell
     Add-Type -assembly "System.IO.Compression.FileSystem"
     try {
         if (![System.IO.File]::Exists($ZipFilePath)) {
             throw "Zip file ""$ZipFilePath"" not found."
         }
-
+        
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($ZipFilePath)
+        <#
+        # Test this alternate way to open the zipfile to see if it lets us close/move it easier.
+        $zfpcopy = Copy-Item -Path $ZipFilePath -Force -PassThru
+        $Zip = [System.IO.Compression.ZipFile]::OpenRead($zfpcopy)
+        #>
         $ZipEntries = [array]($Zip.Entries | where-object {
                 return $_.FullName -eq $FilePathInZip
             });
@@ -61,41 +93,18 @@ function Read-FileInZip($ZipFilePath, $FilePathInZip) {
         return $Reader.ReadToEnd()
     }
     finally {
-        if ($Reader) { $Reader.Close() }
+        Start-Sleep -m 50
         # These dispose lines are supposed to close the file but I still can't move the .zip file afterwards
-        if ($Reader) { $Reader.Dispose() }
-        if ($Zip) {$Zip.Dispose()}
+        if ($Reader) { $Reader.Close(); $Reader.Dispose(); Remove-Variable Reader }
+        if ($Zip) {$Zip.Dispose(); Remove-Variable Zip}
     }
 }
-    
-Clear-Host
-# Import dotnet libraries
-[Void][Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem')
-$ObjArray = @()
-$TR = $null
-$HR = $null
-$R1 = $null
-$CDate = Get-Date -UFormat "%Y%m%d"
-$MoveFilePrompt = "No"
-$Global:CDateTime = [datetime]::ParseExact($Global:CDate,'yyyymmdd',$null)
-$Script:PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-# if (($PCReadFolder = Read-Host "Enter a folder name containing the list of target files. [Enter] to use default: C:\Users\Public\Downloads\Security\Web_Email\New\") -eq "") {$PCReadFolder = "C:\Users\Public\Downloads\Security\Web_Email\New\"}
-$PCReadFolder = "C:\Users\Public\Downloads\Security\Web_Email\New\" # Comment this line and anable the if (($PCReadFolder line to allow for user prompt
-# if (($PCWriteFolder = Read-Host "Enter the folder name Where you wish to move the target files after processing. [Enter] to use default: C:\Users\Public\Downloads\Security\Web_Email\Old\") -eq "") {$PCReadFolder = "C:\Users\Public\Downloads\Security\Web_Email\Old\"}
-$PCWriteFolder = "C:\Users\Public\Downloads\Security\Web_Email\Old\" # Comment this line and anable the if (($PCReadFolder line to allow for user prompt
-# if (($PCReadFileEXT = Read-Host "Enter a file extension to select the target files. [Enter] to use default: .xml") -eq "") {$PCReadFileEXT = ".xml"}
-$PCReadFileEXT = ".xml" # Comment this line and enable the if (($PCReadFileEXT line to allow for user prompt
-Write-Output "`n"
-Write-Warning "Folder is: $PCReadFolder and final extension to parse is: $PCReadFileEXT"
-$Folder = $PCReadFolder |gci |sort LastWriteTime # GCI "C:\Users\Public\Downloads\Security\Web_Email\New*"
-$WorkingFiles = ($Folder |where {$_.name -like "*.zip" -or $_.name -like "*.xml" -or $_.name -like "*.gz"})
-if (($MoveFilePrompt = Read-Host "Type [Enter] move files from New to Old folder") -eq "") {$MoveFilePrompt = "Yes"}
+
 foreach($WorkingFileLine in $WorkingFiles) 
 {            
     $WorkingFileLineLastWriteTime = $WorkingFileLine.LastWriteTime
     $WFName = $WorkingFileLine.Name
     $WorkingFileLine = $WorkingFileLine.FullName
-    # $WorkingFileLine |gm
     $WFL_LWT = $WorkingFileLine.LastWriteTime
     if(Test-Path $WorkingFileLine) 
     {            
@@ -183,13 +192,15 @@ foreach($WorkingFileLine in $WorkingFiles)
                         $F_riheader_from = $Record.identifiers.header_from
                         $F_rrSource_ip = $Record.row.source_ip
                         $RDN = Resolve-DnsName $F_rrSource_ip -ErrorAction SilentlyContinue -ErrorVariable RDNSN
-                            $IP_PTR_Domain = if(($RDN).NameHost){$RDN.NameHost}else{"UNK"}
+                        $IP_PTR_Domain = if(($RDN).NameHost){$RDN.NameHost}else{"UNK"}
+                            if ($R1.spf -eq "fail"){$IP_PTR_Domain = "<font color=`"Red`">$IP_PTR_Domain</font>"} # Highlight the offending Domain PTR when it doesn't match the acceptable IP
+                            if ($R1.spf -eq "fail"){$F_rrSource_ip = "<font color=`"Red`">$F_rrSource_ip</font>"} # Highlight the offending Domain PTR IP when it doesn't match the acceptable IP for the given Domain
                         $F_rrCount = $Record.row.count
                         $F_rrDisposition = $R1.disposition # (Policy Applied)
                         $F_rrdkim = $R1.dkim
                         if ($F_rrdkim -eq "fail"){$F_rrdkim = "<font color=`"Orange`">$F_rrdkim</font>"}
                         $F_rrspf = $R1.spf
-                        if ($F_rrspf -eq "fail"){$F_rrspf = "<font color=`"Red`">$F_rrspf</font>"}
+                        if ($F_rrspf -eq "fail"){$F_rrspf = "<font color=`"Red`">$F_rrspf</font>"} # Highlight a failed SPF when it doesn't match the acceptable IP / Domain PTR
                         $F_rrReasonType = $R1.reason.type
                         $F_rrReasonComment = $R1.reason.comment
                         $F_riRank = $Record.identifiers.Rank
@@ -201,27 +212,30 @@ foreach($WorkingFileLine in $WorkingFiles)
                         $F_rarspfDomain = $Record.auth_results.spf.domain
                         $F_rarspfResult = $Record.auth_results.spf.result
                         $F_rChildNodes = $Record.ChildNodes # Unused
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_mtRptID $F_mtRptID
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_StartDate $Date1
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_EndDate $Date2
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_riheader_from -Value $F_riheader_from
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrSource_ip -Value $F_rrSource_ip
-                        $R1 |Add-Member -MemberType NoteProperty -Name IP_PTR_Domain -Value $IP_PTR_Domain
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrCount -Value $F_rrCount
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrDisposition -Value $F_rrDisposition
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrdkim -Value $F_rrdkim
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrspf -Value $F_rrspf
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrReasonType -Value $F_rrReasonType
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rrReasonComment -Value $F_rrReasonComment
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_riRank -Value $F_riRank
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_riSyncRoot -Value $F_riSyncRoot
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rardkim -Value $F_rardkim
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rardkimDomain -Value $F_rardkimDomain
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rardkimResult -Value $F_rardkimResult
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rardkimSelector -Value $F_rardkimSelector
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rarspfDomain -Value $F_rarspfDomain
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rarspfResult -Value $F_rarspfResult
-                        $R1 |Add-Member -MemberType NoteProperty -Name F_rChildNodes -Value $F_rChildNodes # Unused
+                        $R1 = @{
+                            F_mtRptID = $F_mtRptID
+                            F_StartDate = $Date1
+                            F_EndDate = $Date2
+                            F_riheader_from = $F_riheader_from
+                            F_rrSource_ip = $F_rrSource_ip
+                            IP_PTR_Domain = $IP_PTR_Domain
+                            F_rrCount = $F_rrCount
+                            F_rrDisposition = $F_rrDisposition
+                            F_rrdkim = $F_rrdkim
+                            F_rrspf = $F_rrspf
+                            F_rrReasonType = $F_rrReasonType
+                            F_rrReasonComment = $F_rrReasonComment
+                            F_riRank = $F_riRank
+                            F_riSyncRoot = $F_riSyncRoot
+                            F_rardkim = $F_rardkim
+                            F_rardkimDomain = $F_rardkimDomain
+                            F_rardkimResult = $F_rardkimResult
+                            F_rardkimSelector = $F_rardkimSelector
+                            F_rarspfDomain = $F_rarspfDomain
+                            F_rarspfResult = $F_rarspfResult
+                            F_rChildNodes = $F_rChildNodes # Unused
+                            }
+                            New-Object -TypeName PSObject -Property $R1
                     }
                     $TRF_mtRptID = $R1.F_mtRptID
                     $TRF_StartDate = $R1.F_StartDate
@@ -336,8 +350,8 @@ $Header = @"
     TD {border-width: 1px; padding: 3px; border-style: solid; border-color: black;}
     </style>
 "@
-ConvertTo-Html -Property Name,Used,Provider,root,currentlocation -Title $HTMLTitle -Body $HTMLBody -Head $Header |Out-File -FilePath .\DMARCReport.html
-Start-Process "chrome" -Argument ".\DMARCReport.html"
+ConvertTo-Html -Property Name,Used,Provider,root,currentlocation -Title $HTMLTitle -Body $HTMLBody -Head $Header |Out-File -FilePath $ScriptPath\DMARCReport.html
+Start-Process "chrome" -Argument "$ScriptPath\DMARCReport.html"
 if ($ExportCSVFileName){            
     try {            
         $Global:ObjArray  | Export-CSV -Path $ExportCSVFileName -NotypeInformation            
@@ -348,10 +362,12 @@ if ($ExportCSVFileName){
 # Clean up compressed files 
 if ($MoveFilePrompt -eq "Yes")
 {
+    Write-Warning "Moving source files to: $PCWriteFolder" 
     foreach($WorkingFileLine in $WorkingFiles) 
     {
-        "WorkingFileLine: $WorkingFileLine"
-        Move-Item "$PCReadFolder\$WorkingFileLine" "$PCWriteFolder\$WFName" -Force -ErrorAction SilentlyContinue -ErrorVariable MoveErr
+        $WFName = $WorkingFileLine.Name
+        Write-Output "$WFName"
+        Move-Item "$PCReadFolder\$WFName" "$PCWriteFolder\$WFName" -Force -ErrorAction SilentlyContinue -ErrorVariable MoveErr
     }
     "$MoveErr"
 }
