@@ -30,6 +30,7 @@ function chcolor($p1,$p2,$p3,$NC){
             $script:p2 = $null
             $script:p3 = $null
 }
+
 function Get-PCList()
 {$ADorCSL = $null
     $p1 = "Type AD to use active computers listed in Active Directory or";
@@ -43,7 +44,7 @@ if ($ADorCSL -eq "AD")
         # $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"' # (use this line if you don't care what OU the systems are in)
         # Filter out AD for Enabled systems in the Domain Computers and Domain Controllers OUs
         # Add more properties or * if you need more returned with the query
-        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'-Properties Enabled,Name,IPv4Address,DistinguishedName |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"} 
+        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'-Properties Enabled,Name,IPv4Address,DistinguishedName |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"} |sort-object Name
     }
 elseif ($ADorCSL -eq "C")
     {
@@ -51,7 +52,7 @@ elseif ($ADorCSL -eq "C")
         $PCListPrompt = Read-Host "Type in a comma separated list of computers"
         [array]$Global:PCList = $PCListPrompt.split(",") |%{$_.trim()}
         # need to standardize on how this list is presented throughout the script then remove this line: Use just $PCList throughout the script.
-        $computers = $Global:PCList
+        $computers = $Global:PCList |sort-object
         # https://poshoholic.com/2009/01/19/powershell-quick-tip-how-to-retrieve-the-current-line-number-and-file-name-in-your-powershell-script/
         $CLineNum = $MyInvocation.ScriptLineNumber
         Write-Warning "Called from current line in Script: $CLineNum"
@@ -60,22 +61,16 @@ elseif ($ADorCSL -eq "C")
 elseif ($ADorCSL -eq "S")
     {
         # Get the list from Servers listed in Active Directory
-        # $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'
         # Filter out AD for Enabled systems in the Domain Computers and Domain Controllers OUs
-        # $Global:PCList = Get-ADComputer -Filter '-and Enabled -eq "True"' |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"}
-        $Global:PCList = Get-ADComputer -Filter {OperatingSystem -like "*server*" -and Enabled -eq $true} |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"}
+        $Global:PCList = Get-ADComputer -Filter {OperatingSystem -like "*server*" -and Enabled -eq $true} |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*"}|sort-object Name
 
     }
 elseif ($ADorCSL -eq "F")
 {
-    if (($PCListFile = Read-Host "Enter a file name containing a list of systems. [Enter] to use default: .\pl.txt") -eq "") {$PCListFile = ".\pl.txt"}
-    # $PCListFile = Read-Host "Enter a file name containing a list of systems. Default is: .\pl.txt"
-    # Option to add a pclist from a file as a source
+    if (($PCListFile = Read-Host "Enter a file name containing a list of systems - CritSys.txt/pl.txt, etc. [Enter] to use default: .\pl.txt") -eq "") {$PCListFile = ".\pl.txt"}
     # $Global:PCList use a file as an optional data source
-    $Global:PCList = Get-Content $PCListFile # .\pl.txt # Get CSV list from this file listed in the current directory
+    $Global:PCList = Get-Content $PCListFile |sort # .\pl.txt # Get list from this file located in the current directory (single item per line)
     Write-Warning "Getting systems from $PCListFile"
-    # $Global:PCList
-    # $Global:PCList.GetType()
 }
 Else
     {
@@ -101,7 +96,7 @@ Else
                 $ErrorActionPreference = "continue"
         }
     }
-
+$Global:PCCnt = ($Global:PCList).Count
 }
 
 function Identify-PCName
