@@ -5,7 +5,7 @@
    Use Printer-related functions
 .DESCRIPTION
     PrintMenu design patterned after: https://quickclix.wordpress.com/2012/08/14/making-powershell-PrintMenus/
-    2020-11-13
+    2020-11-17
     Written by Jason Crockett - Laclede Electric Cooperative
 .PARAMETERS
     No command-line parameters needed
@@ -16,28 +16,28 @@
 .REMARKS
 
 .TODO
-    Modify Get-PrintInfo function to list the name of the computer along with the discovered information
+    Modify Get-PrintInfo function to list the name of the computer along with the discovered information and cleanup output
 #>
 # set script variables
 [BOOLEAN]$Global:ExitSession=$false
-$script:Prt4 = "`t`t`t`t"
-$Script:Prd4 = "------ Use-Print Menu ($Global:PCCnt Systems currently selected)-----"
-$script:PrNC = $null
-$Script:PrP1 = $null
-$Script:PrP2 = $null
-$Script:PrP3 = $null
-$Script:PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+$Global:Prt4 = "`t`t`t`t"
+$Global:Prd4 = "------ Use-Print Menu ($Global:PCCnt Systems currently selected)-----"
+$Global:PrNC = $null
+$Global:PrP1 = $null
+$Global:PrP2 = $null
+$Global:PrP3 = $null
+$Global:PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 [int]$PrintMenuselect = 0
-function chPRcolor($Script:PrP1,$Script:PrP2,$Script:PrP3,$NC)
+function chPRcolor($Global:PrP1,$Global:PrP2,$Global:PrP3,$global:PrNC)
 {
-    Write-host $script:Prt4 -NoNewline
-    Write-host "$Script:PrP1 " -NoNewline
-    Write-host "$Script:PrP2" -ForegroundColor $NC -NoNewline
-    Write-host "$Script:PrP3" -ForegroundColor White
-    $script:PrNC = $null
-    $Script:PrP1 = $null
-    $Script:PrP2 = $null
-    $Script:PrP3 = $null
+    Write-host $Global:Prt4 -NoNewline
+    Write-host "$Global:PrP1 " -NoNewline
+    Write-host "$Global:PrP2" -ForegroundColor $global:PrNC -NoNewline
+    Write-host "$Global:PrP3" -ForegroundColor White
+    $Global:PrNC = $null
+    $Global:PrP1 = $null
+    $Global:PrP2 = $null
+    $Global:PrP3 = $null
 }
 function PrintMenu()
 {
@@ -45,118 +45,87 @@ while ($PrintMenuSelect -lt 1 -or $PrintMenuSelect -gt 6)
     {
         Clear-Host
         Trap {"Error: $_"; Break;}        
-        $Script:PRMNum = 0;Clear-host |out-null
+        $Global:PRMNum = 0;Clear-host |out-null
         Start-Sleep -m 250
         if ($Global:PCCnt -eq $null) {$Global:PCCnt = 0}Else {$Global:PCCnt = ($Global:PCList).Count}
-        $Script:Prd4 = "------ Use-Print Menu ($Global:PCCnt Systems currently selected)-----"
-        Write-host $script:Prt4 $script:Prd4 -ForegroundColor Green
-# 1. Exit Print Menu" -ForegroundColor Red
-        # Exit
-        $Script:PRMNum ++;$PRExit=$Script:PRMNum;
-            $Script:PrP1 = " $Script:PRMNum. `t";
-            $Script:PrP2 = "Exit Main PrintMenu";
-            $Script:PrP3 = " ";
-            $NC = "Red";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
-# Get PCList
-        $Script:PRMNum ++;$Get_PrPCList=$Script:PRMNum;$Script:PrP1 =" $PrMNum.  `t Select";
-            $Script:PrP2 = "systems to use ";$Script:PrP3 = "with commands on menu ($Global:PCCnt Systems currently selected)";
-            $NC = "Cyan";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
-# Printer, Port, and Driver Info
-        $Script:PRMNum ++;$Get_PrintInfo=$Script:PRMNum;
-            $Script:PrP1 = " $Script:PRMNum. `t View ";
-            $Script:PrP2 = "Printer, Port, and Driver ";
-            $Script:PrP3 = "Information"
-            $NC = "Yellow";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
-# Printer Information
-        $Script:PRMNum ++;$Get_PrinterInfo=$Script:PRMNum;
-            $Script:PrP1 = " $Script:PRMNum. `t View ";
-            $Script:PrP2 = "Printer ";
-            $Script:PrP3 = "Information"
-            $NC = "Yellow";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
-# Printer Port Information
-        $Script:PRMNum ++;$Get_PrinterPortInfo=$Script:PRMNum;
-            $Script:PrP1 = " $Script:PRMNum. `t View ";
-            $Script:PrP2 = "Printer Port ";
-            $Script:PrP3 = "Information"
-            $NC = "Yellow";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
-# Printer Driver Information
-        $Script:PRMNum ++;$Get_PrinterDriverInfo=$Script:PRMNum;
-            $Script:PrP1 = " $Script:PRMNum. `t View ";
-            $Script:PrP2 = "Printer Driver ";
-            $Script:PrP3 = "Information"
-            $NC = "Yellow";chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
+        $Global:Prd4 = "------ Use-Print Menu ($Global:PCCnt Systems currently selected)-----"
+        Write-host $Global:Prt4 $Global:Prd4 -ForegroundColor Green
+    # Exit Print Menu
+        $Global:PRMNum ++;$PRExit=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t";
+            $Global:PrP2 = "Exit Main PrintMenu";
+            $Global:PrP3 = " ";
+            $global:PrNC = "Red";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Get a globally available list of systems
+        $Global:PRMNum ++;$Get_PrPCList=$Global:PRMNum;$Global:PrP1 =" $PrMNum.  `t Select";
+            $Global:PrP2 = "systems to use ";$Global:PrP3 = "with commands on menu ($Global:PCCnt Systems currently selected)";
+            $global:PrNC = "Cyan";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Printer, Port, and Driver Info
+        $Global:PRMNum ++;$Get_PrintInfo=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t View ";
+            $Global:PrP2 = "Printer, Port, and Driver ";
+            $Global:PrP3 = "Information"
+            $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Printer Information (name, drivername, portname, shared, sharename)
+        $Global:PRMNum ++;$Get_PrinterInfo=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t View ";
+            $Global:PrP2 = "Printer ";
+            $Global:PrP3 = "Information"
+            $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Printer Port Information
+        $Global:PRMNum ++;$Get_PrinterPortInfo=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t View ";
+            $Global:PrP2 = "Printer Port ";
+            $Global:PrP3 = "Information"
+            $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Printer Driver Information
+        $Global:PRMNum ++;$Get_PrinterDriverInfo=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t View ";
+            $Global:PrP2 = "Printer Driver ";
+            $Global:PrP3 = "Information"
+            $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
                        
         # Setting up the PrintMenu in this way allows you to move PrintMenu items around and have the numbering change automatically
         # It also allows you to put a word in the middle of the line and have it change color to be easier to see
-        # $Script:PRMNum ++;$Script:PrP1 =" $Script:PRMNum.  FIRST";$Script:PrP2 = "HIGHLIGHTED ";$Script:PrP3 = "END"; $NC = "yellow";chPRcolor $Script:PrP1 $script:p2 $Script:PrP3 $NC
-        Write-Host "$script:Prt4$script:Prd4"  -ForegroundColor Green
-        $Script:PRMNum = 0;[int]$PrintMenuSelect = Read-Host "`n`tPlease select the PrintMenu item you would like to do now"
+        # $Global:PRMNum ++;$Global:PrP1 =" $Global:PRMNum.  FIRST";$Global:PrP2 = "HIGHLIGHTED ";$Global:PrP3 = "END"; $global:PrNC = "yellow";chPRcolor $Global:PrP1 $Global:p2 $Global:PrP3 $global:PrNC
+        Write-Host "$Global:Prt4$Global:Prd4"  -ForegroundColor Green
+        $Global:PRMNum = 0;[int]$PrintMenuSelect = Read-Host "`n`tPlease select the PrintMenu item you would like to do now"
     }
-    Function Nullify-PrintPrompts
-    {
-        $Script:PI = $null
-        $Script:PPI = $null
-        $Script:PDI = $null
-    }
-    Function Confirm-PrPrompts
-    {
-        $Script:PI = "Yes"
-        $Script:PPI = "Yes"
-        $Script:PDI = "Yes"
-    }
-    $PICMD = ""
-    $PPICMD = ""
-    $PDICMD = ""
     switch($PrintMenuSelect)
     {
         # Variables at the beginning of these lines in the switch are numbers assigned by their position in the above
         # configured PrintMenu layout. This allows them to be moved around and let the numbers automatically adjust
         $PRExit{$PrintMenuSelect=$null}
-        $Get_PrPCList{Clear-Host;Confirm-PrPrompts;Get-PCList;reloadPrintMenu}
-        $Get_PrintInfo{Clear-Host;Confirm-PrPrompts;Get-PrintInfo $Script:PI $Script:PPI $Script:PDI;reloadPrintMenu}
-        $Get_PrinterInfo{Clear-Host;Write-Output $PICMD;$Script:PI = "Yes";Get-PrinterInfo;ReloadPrintMenu}
-        $Get_PrinterPortInfo{Clear-Host;Write-Output $PPICMD;$Script:PPI = "Yes";Get-PrinterPortInfo;ReloadPrintMenu}
-        $Get_PrinterDriverInfo{Clear-Host;Write-Output $PDICMD;$Script:PDI = "Yes";Get-PrinterDriverInfo;ReloadPrintMenu}
+        $Get_PrPCList{Clear-Host;Get-PCList;Reload-PromptPrintMenu}
+        $Get_PrintInfo{Clear-Host;Get-PrinterInfo;Get-PrinterPortInfo;Get-PrinterDriverInfo;Reload-PromptPrintMenu}
+        $Get_PrinterInfo{Clear-Host;Get-PrinterInfo;Reload-PromptPrintMenu}
+        $Get_PrinterPortInfo{Clear-Host;Get-PrinterPortInfo;Reload-PromptPrintMenu}
+        $Get_PrinterDriverInfo{Clear-Host;Get-PrinterDriverInfo;Reload-PromptPrintMenu}
         default
         {
             $PrintMenuSelect = $null
-            $global:NC = " "
-            $global:p1 = " "
-            $global:p2 = " "
-            $global:p3 = " "
-            $Script:PRMNum = 0
-            ReloadPrintMenu
+            $Global:PrNC = " "
+            $Global:PrP1 = " "
+            $Global:p2 = " "
+            $Global:p3 = " "
+            $Global:PRMNum = 0
+            Reload-PromptPrintMenu
         }
     }
 }
-
-function ReloadPrintMenu()
+function Reload-PromptPrintMenu()
 {
         Read-Host "Hit Enter to continue"
         $PrintMenuSelect = $null
-        $Script:PRMNum = 0
+        $Global:PRMNum = 0
         PrintMenu
 }
 
-Function Get-PrintInfo($Script:PI, $Script:PPI, $Script:PDI)
+function Reload-PrintMenu()
 {
-    # Use the following if we want to retain a single PCList across many menu functions 
-    if ($Global:PCList -eq $null)
-    {
-        Get-PCList
-    }
-    Else
-    {
-    Write-Warning "Getting printer information from the following list : $Global:PCList"
-    }
-    foreach($Global:pcLine in $Global:PCList)
-    {
-        Identify-PCName # Called from Run-PSMenu.ps1
-        if ($Script:PI -eq "Yes"){Get-PrinterInfo}
-        if ($Script:PPI -eq "Yes"){Get-PrinterPortInfo}
-        if ($Script:PDI -eq "Yes"){Get-PrinterDriverInfo}
-    }
-    Nullify-PrintPrompts
+        $PrintMenuSelect = $null
+        $Global:PRMNum = 0
+        PrintMenu
 }
 # Get and display printer information for listed system
 Function Get-PrinterInfo
@@ -177,11 +146,11 @@ Function Get-PrinterInfo
         # Only attempt to get information from computers that are reachable with a ping
         If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue)
         {
-            $Script:PrP1 = "`nRunning: Get-WmiObject -Class win32_printer -Credential $cred -ComputerName"
-            $Script:PrP2 = "$Global:PC"
-            $Script:PrP3 = " | select name, drivername, portname, shared, sharename |ft -AutoSize"
-            $NC = "Yellow";
-            chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
+            $Global:PrP1 = "`nRunning: Get-WmiObject -Class win32_printer -Credential $cred -ComputerName"
+            $Global:PrP2 = "$Global:PC"
+            $Global:PrP3 = " | select name, drivername, portname, shared, sharename |ft -AutoSize"
+            $Global:PrNC = "Yellow";
+            chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $Global:PrNC
             $prin = Get-WmiObject -Class win32_printer -Credential $cred -ComputerName $Global:PC | select name, drivername, portname, shared, sharename |ft -AutoSize
             $prin
             # Testing another Printer Info command
@@ -209,11 +178,11 @@ Function Get-PrinterPortInfo
         # Only attempt to get information from computers that are reachable with a ping
         If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue)
         {
-    $Script:PrP1 = "`nRunning: get-printerport -computer "
-    $Script:PrP2 = "$Global:PC"
-    $Script:PrP3 = " |select ComputerName,Description,PrinterHostAddress,Name |ft -Wrap -AutoSize"
-    $NC = "Yellow";
-    chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
+    $Global:PrP1 = "`nRunning: get-printerport -computer "
+    $Global:PrP2 = "$Global:PC"
+    $Global:PrP3 = " |select ComputerName,Description,PrinterHostAddress,Name |ft -Wrap -AutoSize"
+    $Global:PrNC = "Yellow";
+    chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $Global:PrNC
     $prin2 = Get-PrinterPort -ComputerName $Global:PC |select ComputerName,Description,PrinterHostAddress,Name |ft -Wrap -AutoSize
     $prin2
         }
@@ -239,11 +208,11 @@ Function Get-PrinterDriverInfo
         # Only attempt to get information from computers that are reachable with a ping
         If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue)
         {
-    $Script:PrP1 = "`nRunning: get-printerDriver -computer"
-    $Script:PrP2 = "$Global:PC"
-    $Script:PrP3 = " |select * |ft -wrap -Autosize"
-    $NC = "Yellow";
-    chPRcolor $Script:PrP1 $Script:PrP2 $Script:PrP3 $NC
+    $Global:PrP1 = "`nRunning: get-printerDriver -computer"
+    $Global:PrP2 = "$Global:PC"
+    $Global:PrP3 = " |select * |ft -wrap -Autosize"
+    $Global:PrNC = "Yellow";
+    chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $Global:PrNC
     $prin3 = get-printerDriver -computer $Global:PC |select ComputerName,Name|ft -wrap -Autosize
     $prin3
         }
