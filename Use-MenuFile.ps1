@@ -67,7 +67,7 @@ Function FileMenu()
 		    $Script:Fp2 = "Exit ";
 		    $Script:Fp3 = "to Main Menu"; $Script:FNC = "Red";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
 # $Get_PCList
-        $FMNum ++;$Get_PCList=$FMNum;$Script:Fp1 =" $FMNum.  `t Select";
+        $FMNum ++;$Get_PCList=$FMNum;$Script:Fp1 =" $FMNum.  `tSelect";
             $Script:Fp2 = "systems to use ";$Script:Fp3 = "with commands on menu ($Global:PCCnt Systems currently selected).";
             $Script:FNC = "Cyan";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
         # Perform one of the following: Copy a file, fix links, view mapped drives to/on selected computers in this domain
@@ -77,7 +77,7 @@ Function FileMenu()
 		    $Script:Fp2 = "Copy a file, fix links, `n$Script:Ft4`t`tview mapped drives,`tor read data from a file ";
 		    $Script:Fp3 = "`n$Script:Ft4`t`tto/on selected computers in this domain`t**Elevated Permissions Required**"; $Script:FNC = "yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
         # List OpenFiles on Servers
-        $FMNum ++;$adOpFiles = $FMNum;
+        $FMNum ++;$get_OpenFiles = $FMNum;
             $Script:Fp1 =" $FMNum. `tList ";
 		    $Script:Fp2 = "open files ";
 		    $Script:Fp3 = "on AD file servers... "; $Script:FNC = "yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
@@ -102,7 +102,7 @@ Function FileMenu()
 # NTFS Folder - Change Ownership and Add FullControl permissions then prompt to delete.
             $FMNum ++;
             $Manage_NTFS=$FMNum;
-            $Script:Fp1 = " $FMNum. `tNTFS Folder - ";
+            $Script:Fp1 = " $FMNum. `tIncomplete: NTFS Folder - ";
             $Script:Fp2 = "Change Ownership and Add FullControl permissions ";
             $Script:Fp3 = "then prompt to delete"
             $Script:FNC = "Yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
@@ -122,9 +122,9 @@ Function FileMenu()
     switch($FileMenuSelect)
     {
         $adExit{$FileMenuSelect=$null}
-        $Get_PCList{Clear-Host;Confirm-Prompts;Get-PCList;Reload-PromptFileMenu}
+        $Get_PCList{Clear-Host;Get-PCList;Reload-FileMenu}
         $adManageADUFiles{$FileMenuSelect=$null;Manage-ADUserFiles;Reload-PromptFileMenu} # Requires permission to view C$ shares on all selected systems
-        $adOpFiles{$FileMenuSelect=$null;get-OpenFiles;Reload-PromptFileMenu}
+        $get_OpenFiles{$FileMenuSelect=$null;get-OpenFiles;Reload-FileMenu}
         $Compare_Files{Compare-Files;Reload-PromptFileMenu}
         $run_get_filehash{run-get-filehash;Reload-PromptFileMenu}
         $Get_ModifiedFileList{Get-ModifiedFileList;Reload-PromptFileMenu}
@@ -148,6 +148,11 @@ Function Reload-PromptFileMenu()
         FileMenu
 }
 
+Function Reload-FileMenu()
+{
+        $FileMenuSelect = $null
+        FileMenu
+}
 
 
 # This can be designed to be called from different areas.
@@ -232,7 +237,6 @@ Function Manage-ADUserFiles()
         {
             $NamedFiles = Read-Host "Enter a file name to read. Ex: printers-"
             $CFdesk = Read-Host "Is the file on the desktop? Yes or No."
-            # need to de-personalize this -OR- get the .\ or script folder to work
             $OutFile = "$PSScriptRoot\$NamedFiles"+"Results.csv"
             $AppendOverwrite = Read-Host "Type O to overwrite $OutFile`nAll other options will Append"
             Write-Warning "Collect Function Results will be saved in: $OutFile"
@@ -343,16 +347,52 @@ Function Manage-ADUserFiles()
 Function get-OpenFiles()
 {
     Clear-Host
-    Get-PCList
-    foreach ($Global:PCLine in $Global:PCList)
+    $OFObjOut = @()
+    $OFObj = @()
+    $srvobj = @()
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
     {
-        Identify-PCName # possibly need to bring this function into this script if it won't run from get-systemslist.ps1
-        $srvobj = invoke-command {c:\Windows\System32\openfiles.exe /query /s $Global:PC /fo csv /V} |convertfrom-csv |
-        select Hostname,ID,Type,@{Name="UserName"; Expression="Accessed By"},@{Name="Path_FileName"; Expression="Open File (Path\executable)"} |
-        Where {$_.Path_FileName -ne "D:\\"}|
-        sort Path_FileName | Out-GridView # ft -AutoSize -Wrap
-        $srvobj
+        Get-PCList
     }
+    $OFObj=foreach($Global:pcLine in $Global:PCList)
+    {
+        Identify-PCName # Called from Run-PSMenu.ps1
+        $srvobj = @()
+        $srvobjLine = @()
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            # Build Invoke-Command to run openfiles.exe on system and output to object
+            $srvobj = Invoke-Command {c:\Windows\System32\openfiles.exe /query /s $Global:PC /fo csv /V} |convertfrom-csv |
+            select Hostname,ID,Type,@{Name="UserName"; Expression="Accessed By"},@{Name="Path_FileName"; Expression="Open File (Path\executable)"} |
+            Where {$_.Path_FileName -ne "D:\\"}|
+            sort Path_FileName
+            foreach($srvobjLine in $srvobj)
+            {
+                $OFObjProperties = @{
+                    pscomputername = $Global:PC;
+                    # ID = $srvobjLine.ID;
+                    # Type = $srvobjLine.Type;
+                    UserName = $srvobjLine.UserName;
+                    Path_FileName = $srvobjLine.Path_FileName
+                    }                
+            New-Object -TypeName PSObject -Prop $OFObjProperties
+            }
+        }
+        else
+        {
+            Write-host "$Global:PC, " -NoNewline -ForegroundColor Red
+            $OFObjProperties = @{
+                    pscomputername = $Global:PC;
+                    ID = "";
+                    Type = "";
+                    UserName = $srvobjLine.UserName;
+                    Path_FileName = "** No Response from system **"
+                    }                
+            New-Object -TypeName PSObject -Prop $OFObjProperties
+        }
+    }
+    $OFObj|sort PSComputerName,Path_FileName |Select PSComputerName, UserName, Path_FileName |out-GridView -Title "Searching for open files on $Global:PCCnt systems" # , ID, Type
 }
 
 # Get-Shortcut called from Replace-DriveLetterLinks function
