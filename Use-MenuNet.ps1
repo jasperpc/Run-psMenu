@@ -24,6 +24,8 @@
 .REMARKS
     To see the examples, type: help Use-MenuNet.ps1 -examples
     To see more information, type: help Use-MenuNet.ps1 -detailed
+.TODO
+    Fix the network PING connection persistence function so that it exits gracefully
 #>
 # set script variables
 # [BOOLEAN]$Global:ExitSession=$false
@@ -145,27 +147,32 @@ while ($NetMenuSelect -lt 1 -or $NetMenuSelect -gt 12)
         # Variables at the beginning of these lines in the switch are numbers assigned by their position in the above
         # configured menu layout. This allows them to be moved around and let the numbers automatically adjust
         $NExit{$NetMenuSelect=$null}
-        $Get_PCList{Clear-Host;Get-PCList;reloadnetmenu}
-        $test_Connections{Clear-Host;test-connections;reloadnetmenu}
-        $test_ports{Clear-Host;test-ports;ReloadNetMenu}
-        $Call_Get_NICStatus{Clear-Host;Call-Get-NICStatus;reloadnetmenu}
-        $Get_IPConfig{Clear-Host;Get-IPConfig;reloadnetmenu}
-        $Get_hostname{Clear-Host;Get-hostname;ReloadNetMenu}
-        $View_NetStat{Invoke-Expression .\Get-NetStat.ps1;ReloadNetMenu}   # View NetStat results for a system including the process name and active ports
-        $Test_PCUp{Clear-Host;Test-PCUp;ReloadNetMenu}
-        $Get_IP{Clear-Host;Get-IP;ReloadNetMenu}
-        $Test_ValidIPPrompt{clear-host|Test-ValidIPPrompt;ReloadNetMenu}
-        $Wait_Live{Clear-Host;Wait-Live;ReloadNetMenu}
+        $Get_PCList{Clear-Host;Get-PCList;Reload-NetMenu}
+        $test_Connections{Clear-Host;test-connections;Reload-PromptNetMenu}
+        $test_ports{Clear-Host;test-ports;Reload-PromptNetMenu}
+        $Call_Get_NICStatus{Clear-Host;Call-Get-NICStatus;Reload-PromptNetMenu}
+        $Get_IPConfig{Clear-Host;Get-IPConfig;Reload-PromptNetMenu}
+        $Get_hostname{Clear-Host;Get-hostname;Reload-PromptNetMenu}
+        $View_NetStat{Invoke-Expression .\Get-NetStat.ps1;Reload-PromptNetMenu}   # View NetStat results for a system including the process name and active ports
+        $Test_PCUp{Clear-Host;Test-PCUp;Reload-PromptNetMenu}
+        $Get_IP{Clear-Host;Get-IP;Reload-PromptNetMenu}
+        $Test_ValidIPPrompt{clear-host|Test-ValidIPPrompt;Reload-PromptNetMenu}
+        $Wait_Live{Clear-Host;Wait-Live;Reload-PromptNetMenu}
         default
         {
             $NetMenuSelect = $null
-            ReloadNetMenu
+            Reload-PromptNetMenu
         }
     }
 }
-Function ReloadNetMenu()
+Function Reload-PromptNetMenu()
 {
         Read-Host "Hit Enter to continue"
+        $NetMenuSelect = $null
+        NetMenu
+}
+Function Reload-NetMenu()
+{
         $NetMenuSelect = $null
         NetMenu
 }
