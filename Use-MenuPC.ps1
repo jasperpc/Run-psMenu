@@ -51,7 +51,7 @@ Function chPCcolor($Script:PCp1,$Script:PCp2,$Script:PCp3,$Script:PCNC){
 
 Function PCmenu()
 {
-    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 21)
+    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 20)
     {
         Trap {"Error: $_"; Break;}        
         $PCMNum = 0;Clear-host |out-null
@@ -127,12 +127,6 @@ Function PCmenu()
             $Script:PCp1 = " $PCMNum. `t";
             $Script:PCp2 = "Enable RDP";
             $Script:PCp3 = " on a Windows system"
-            $Script:PCNC = "Yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
-    # Printer Driver Information
-        $PCMNum ++;$Get_PrinterDriverInfo=$PCMNum;
-            $Script:PCp1 = " $PCMNum. `t View ";
-            $Script:PCp2 = "Printer Driver ";
-            $Script:PCp3 = "Information"
             $Script:PCNC = "Yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
     # Process Information
         $PCMNum ++;$Get_PCProcess=$PCMNum;
@@ -212,28 +206,26 @@ Function PCmenu()
     $Global:NICSCMD = ""
 switch($PCmenuselect)
     {
-$PCMExit{$PCmenuselect=$null}
-$GCred{Clear-Host;Get-Cred;$PCmenuselect = $null;reload-PromptPCmenu} # Called from Run-PSMenu.ps1
-$Get_PCList{Clear-Host;Confirm-Prompts;Get-PCList;reload-PromptPCmenu}
-$Use_MenuPCInfo{. .\Use-MenuPCInfo.ps1;PCIMenu}
-$Use_MenuPCApp{. .\Use-MenuPCApp.ps1;PCAppMenu}
-$Use_MenuPCSvc{. .\Use-MenuPCSvc.ps1;PCSvcMenu}
-$Get_OldDCPCs{$PCmenuselect = $null;Get-OldDCPCs;reload-PromptPCmenu}
-$Get_RDPStats{Get-RDPStats;reload-PromptPCmenu}
-$Enable_RDP{Enable-RDP;reloadmenu}
-$Call_Get_SysEvents{$PCmenuselect = $null;Call-Get-SysEvents;reload-PromptPCmenu}
-$Get_ADPcStarts{$PCmenuselect = $null;Get-ADPcStarts;reload-PromptPCmenu}
-$Reset_IE{$PCmenuselect = $null;Reset-IE;reload-PromptPCmenu}
-$List_DomPCs{$PCmenuselect = $null;List-DomPCs;reload-PromptPCmenu}
-$View_Certificates{View-Certificates;reload-PromptPCmenu}
-$Get_OSArch{$PCmenuselect = $null;Get-OSArch;reload-PromptPCmenu}
-$Get_PrinterDriverInfo{Clear-Host;Nullify-Prompts;Write-Output $Global:PDICMD;$Global:PDI = "Yes";Get-PrinterDriverInfo;reload-PromptPCmenu}
-$Get_PCProcess{Clear-Host;Nullify-Prompts;Write-Output $Global:PCPCMD;$Global:PCP = "Yes";Get-PCInfo $Global:PCP <#Get-PCProcess#>;reload-PromptPCmenu}
-$Get_BootTime{Clear-Host;.\Start-MultiThreads.ps1 .\Get-BootTime.ps1  -ScriptArgs $Global:PCList;reload-PromptPCmenu} # Called Externally
-$Active_ScrnSav{Active-ScrnSav;reload-PromptPCmenu}
-$Get_ScheduledTaskInformation{Get-ScheduledTaskInformation;reload-PromptPCmenu}
-$Get_WinSAT{$PCmenuselect = $null;get-winSAT;reload-PromptPCmenu}
-$Test_CritSysLive{Test-CritSysLive;reload-PromptPCmenu}
+    $PCMExit{$PCmenuselect=$null}
+    $GCred{Clear-Host;Get-Cred;$PCmenuselect = $null;reload-PromptPCmenu} # Called from Run-PSMenu.ps1
+    $Get_PCList{Clear-Host;Confirm-Prompts;Get-PCList;reload-PCmenu}
+    $Use_MenuPCInfo{. .\Use-MenuPCInfo.ps1;PCIMenu}
+    $Use_MenuPCApp{. .\Use-MenuPCApp.ps1;PCAppMenu}
+    $Use_MenuPCSvc{. .\Use-MenuPCSvc.ps1;PCSvcMenu}
+    $Get_OldDCPCs{$PCmenuselect = $null;Get-OldDCPCs;reload-PromptPCmenu}
+    $Test_CritSysLive{Test-CritSysLive;reload-PromptPCmenu}
+    $Get_ADPcStarts{$PCmenuselect = $null;Get-ADPcStarts;reload-PromptPCmenu}
+    $Reset_IE{$PCmenuselect = $null;Reset-IE;reload-PromptPCmenu}
+    $Call_Get_SysEvents{$PCmenuselect = $null;Call-Get-SysEvents $Global:PCList $Global:Cred;reload-PromptPCmenu}
+    $Get_RDPStats{Get-RDPStats;reload-PromptPCmenu}
+    $Enable_RDP{Enable-RDP;reloadmenu}
+    $Get_PCProcess{Clear-Host;Nullify-Prompts;Write-Output $Global:PCPCMD;$Global:PCP = "Yes";Get-PCInfo $Global:PCP <#Get-PCProcess#>;reload-PromptPCmenu}
+    $Get_BootTime{Clear-Host;.\Start-MultiThreads.ps1 .\Get-BootTime.ps1  -ScriptArgs $Global:PCList;reload-PromptPCmenu} # Called Externally
+    $List_DomPCs{$PCmenuselect = $null;List-DomPCs;reload-PromptPCmenu}
+    $Active_ScrnSav{Active-ScrnSav;reload-PromptPCmenu}
+    $Get_ScheduledTaskInformation{Get-ScheduledTaskInformation;reload-PromptPCmenu}
+    $View_Certificates{View-Certificates;reload-PromptPCmenu}
+    $Get_WinSAT{$PCmenuselect = $null;get-winSAT;reload-PromptPCmenu}
 
         default
         {
@@ -340,7 +332,6 @@ Function Get-pcinfo($Global:BSN, $Global:OSI, $Global:CPUI, $Global:MI, $PI, $PP
         if ($Global:MI -eq "Yes"){Get-MemInfo}
         if ($Global:DI -eq "Yes"){Get-DInfo}
         if ($Global:NICS -eq "Yes"){Get-NICStatus}
-        if ($Global:PDI -eq "Yes"){Get-PrinterDriverInfo}
         if ($Global:PCP -eq "Yes"){Get-PCProcess}
     }
     Nullify-Prompts
@@ -574,29 +565,36 @@ Function Active-ScrnSav()
 {
 Clear-Host
 Write-Warning "An active screen saver means the user is AFK"
-Get-PCList
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
     foreach ($Global:pcLine in $Global:PCList)
     {
         Identify-PCName
-        # Search for the screen saver process on a pc as a way of seeing if a user is active
-         $scrpresent = Get-WmiObject Win32_process -ComputerName $Global:PC -credential $cred |Where-Object {($_.processname -like "scrn*" )} |Select-Object processname,@{n='CreatedTime';e={$_.ConvertToDateTime($_.CreationDate)}}
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            # Search for the screen saver process on a pc as a way of seeing if a user is active
+             $scrpresent = Get-WmiObject Win32_process -ComputerName $Global:PC -credential $cred |Where-Object {($_.processname -like "scrn*" )} |Select-Object processname,@{n='CreatedTime';e={$_.ConvertToDateTime($_.CreationDate)}}
           
-         if ($scrpresent.processname -like "scrn*") 
-         {
-            Write-Host "`nThe screen saver has been active on $Global:PC since "$scrpresent.createdtime "`n"
-         }
-         else
-         {
-            Write-Host "The screen saver is not active on $Global:PC"
-         }
+             if ($scrpresent.processname -like "scrn*") 
+             {
+                Write-Host "`nThe screen saver has been active on $Global:PC since "$scrpresent.createdtime "`n"
+             }
+             else
+             {
+                Write-Host "The screen saver is not active on $Global:PC"
+             }
 
-         $getwmiobject = Get-WmiObject -class Win32_computersystem -computername $Global:PC -Credential $Cred
-         $Username = $Getwmiobject.username
+             $getwmiobject = Get-WmiObject -class Win32_computersystem -computername $Global:PC -Credential $Cred
+             $Username = $Getwmiobject.username
 
-         if($UserName -eq $NULL) {
-         Write-host "`nThere is no Current user logged onto $Global:PC`n"
-         }
-            else {write-host "$Username is logged in`n"
+             if($UserName -eq $NULL) {
+             Write-host "`nThere is no Current user logged onto $Global:PC`n"
+             }
+                else {write-host "$Username is logged in`n"
+             }
          }
     }
 }
@@ -605,64 +603,71 @@ Function Get-ScheduledTaskInformation
 {
     Clear-Host
     # http://powershell-guru.com/powershell-tip-56-convert-to-and-from-hex/
-    Get-pclist
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
     # https://docs.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-error-and-success-constants
     $ICSTPCObj = foreach ($Global:pcline in $Global:PCList)
     {
         Identify-PCName
-        # $ICST = Invoke-command -computer $Global:PC {Get-ScheduledTask * | Get-ScheduledTaskInfo |Where {$_.LastTaskResult -gt 0}}|select @{n="LastTaskResult_Hex";e={[System.Convert]::ToString($_.LastTaskResult, 16)}},*
-        $ICST = Invoke-command -computer $Global:PC {Get-ScheduledTask * | Get-ScheduledTaskInfo |Where {$_.LastRunTime -ne $null -and $_.LastTaskResult -gt 0}}|select @{n="LastTaskResult_Hex";e={[System.Convert]::ToString($_.LastTaskResult, 16)}},*
-        $ICSTObj = foreach ($ICSTLine in $ICST)
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
         {
-        $ICSTLine |select pscomputername, LastRunTime, LastTaskResult,LastTaskResult_Hex,
-            @{Label = "LTRDesc" ;Expression={
-                    switch ($ICSTLine.LastTaskResult_Hex)
-                    {
-                        41300 {"SCHED_S_TASK_READY" } #0x00041300 The task is ready to run at its next scheduled time.
-                        41301 {"SCHED_S_TASK_RUNNING" } #0x00041301 The task is currently running.
-                        41302 {"SCHED_S_TASK_DISABLED"} # 0x00041302 The task will not run at the scheduled times because it has been disabled.
-                        41303 {"SCHED_S_TASK_HAS_NOT_RUN"} # 0x00041303 The task has not yet run.
-                        41304 {"SCHED_S_TASK_NO_MORE_RUNS"} # 0x00041304 There are no more runs scheduled for this task.
-                        41305 {"SCHED_S_TASK_NOT_SCHEDULED"} # 0x00041305 One or more of the properties that are needed to run this task on a schedule have not been set.
-                        41306 {"SCHED_S_TASK_TERMINATED"} # 0x00041306 The last run of the task was terminated by the user.
-                        41307 {"SCHED_S_TASK_NO_VALID_TRIGGERS"} # 0x00041307 Either the task has no triggers or the existing triggers are disabled or not set.
-                        41308 {"SCHED_S_EVENT_TRIGGER"} # 0x00041308 Event triggers do not have set run times.
-                        80041309 {"SCHED_E_TRIGGER_NOT_FOUND"} # 0x80041309 A task's trigger is not found.
-                        8004130A {"SCHED_E_TASK_NOT_READY"} # 0x8004130A One or more of the properties required to run this task have not been set.
-                        8004130B {"SCHED_E_TASK_NOT_RUNNING"} # 0x8004130B There is no running instance of the task.
-                        8004130C {"SCHED_E_SERVICE_NOT_INSTALLED"} # 0x8004130C The Task Scheduler service is not installed on this computer.
-                        8004130D {"SCHED_E_CANNOT_OPEN_TASK"} # 0x8004130D The task object could not be opened.
-                        8004130E {"SCHED_E_INVALID_TASK"} # 0x8004130E The object is either an invalid task object or is not a task object.
-                        8004130F {"SCHED_E_ACCOUNT_INFORMATION_NOT_SET"} # 0x8004130F No account information could be found in the Task Scheduler security database for the task indicated.
-                        80041310 {"SCHED_E_ACCOUNT_NAME_NOT_FOUND"} # 0x80041310 Unable to establish existence of the account specified.
-                        80041311 {"SCHED_E_ACCOUNT_DBASE_CORRUPT"} # 0x80041311 Corruption was detected in the Task Scheduler security database; the database has been reset.
-                        80041312 {"SCHED_E_NO_SECURITY_SERVICES"} # 0x80041312 Task Scheduler security services are available only on Windows NT.
-                        80041313 {"SCHED_E_UNKNOWN_OBJECT_VERSION"} # 0x80041313 The task object version is either unsupported or invalid.
-                        80041314 {"SCHED_E_UNSUPPORTED_ACCOUNT_OPTION"} # 0x80041314 The task has been configured with an unsupported combination of account settings and run time options.
-                        80041315 {"SCHED_E_SERVICE_NOT_RUNNING"} # 0x80041315 The Task Scheduler Service is not running.
-                        80041316 {"SCHED_E_UNEXPECTEDNODE"} # 0x80041316 The task XML contains an unexpected node.
-                        80041317 {"SCHED_E_NAMESPACE"} # 0x80041317 The task XML contains an element or attribute from an unexpected namespace.
-                        80041318 {"SCHED_E_INVALIDVALUE"} # 0x80041318 The task XML contains a value which is incorrectly formatted or out of range.
-                        80041319 {"SCHED_E_MISSINGNODE"} # 0x80041319 The task XML is missing a required element or attribute.
-                        8004131A {"SCHED_E_MALFORMEDXML"} # 0x8004131A The task XML is malformed.
-                        8004131B {"SCHED_S_SOME_TRIGGERS_FAILED"} # 0x0004131B The task is registered, but not all specified triggers will start the task.
-                        8004131C {"SCHED_S_BATCH_LOGON_PROBLEM"} # 0x0004131C The task is registered, but may fail to start. Batch logon privilege needs to be enabled for the task principal.
-                        8004131D {"SCHED_E_TOO_MANY_NODES"} # 0x8004131D The task XML contains too many nodes of the same type.
-                        8004131E {"SCHED_E_PAST_END_BOUNDARY"} # 0x8004131E The task cannot be started after the trigger end boundary.
-                        8004131F {"SCHED_E_ALREADY_RUNNING"} # 0x8004131F An instance of this task is already running.
-                        80041320 {"SCHED_E_USER_NOT_LOGGED_ON"} # 0x80041320 The task will not run because the user is not logged on.
-                        80041321 {"SCHED_E_INVALID_TASK_HASH"} # 0x80041321 The task image is corrupt or has been tampered with.
-                        80041322 {"SCHED_E_SERVICE_NOT_AVAILABLE"} # 0x80041322 The Task Scheduler service is not available.
-                        80041323 {"SCHED_E_SERVICE_TOO_BUSY"} #  0x80041323 The Task Scheduler service is too busy to handle your request. Please try again later.
-                        80041324 {"SCHED_E_TASK_ATTEMPTED"} # 0x80041324 The Task Scheduler service attempted to run the task, but the task did not run due to one of the constraints in the task definition.
-                        80041325 {"SCHED_S_TASK_QUEUED"} # 0x00041325 The Task Scheduler service has asked the task to run.
-                        80041326 {"SCHED_E_TASK_DISABLED"} # 0x80041326 The task is disabled.
-                        80041327 {"SCHED_E_TASK_NOT_V1_COMPAT"} # 0x80041327 The task has properties that are not compatible with earlier versions of Windows.
-                        80041328 {"SCHED_E_START_ON_DEMAND"} # 0x80041328 The task settings do not allow the task to start on demand.
-                 }
-         }},TaskName
+            # $ICST = Invoke-command -computer $Global:PC {Get-ScheduledTask * | Get-ScheduledTaskInfo |Where {$_.LastTaskResult -gt 0}}|select @{n="LastTaskResult_Hex";e={[System.Convert]::ToString($_.LastTaskResult, 16)}},*
+            $ICST = Invoke-command -computer $Global:PC {Get-ScheduledTask * | Get-ScheduledTaskInfo |Where {$_.LastRunTime -ne $null -and $_.LastTaskResult -gt 0}}|select @{n="LastTaskResult_Hex";e={[System.Convert]::ToString($_.LastTaskResult, 16)}},*
+            $ICSTObj = foreach ($ICSTLine in $ICST)
+            {
+            $ICSTLine |select pscomputername, LastRunTime, LastTaskResult,LastTaskResult_Hex,
+                @{Label = "LTRDesc" ;Expression={
+                        switch ($ICSTLine.LastTaskResult_Hex)
+                        {
+                            41300 {"SCHED_S_TASK_READY" } #0x00041300 The task is ready to run at its next scheduled time.
+                            41301 {"SCHED_S_TASK_RUNNING" } #0x00041301 The task is currently running.
+                            41302 {"SCHED_S_TASK_DISABLED"} # 0x00041302 The task will not run at the scheduled times because it has been disabled.
+                            41303 {"SCHED_S_TASK_HAS_NOT_RUN"} # 0x00041303 The task has not yet run.
+                            41304 {"SCHED_S_TASK_NO_MORE_RUNS"} # 0x00041304 There are no more runs scheduled for this task.
+                            41305 {"SCHED_S_TASK_NOT_SCHEDULED"} # 0x00041305 One or more of the properties that are needed to run this task on a schedule have not been set.
+                            41306 {"SCHED_S_TASK_TERMINATED"} # 0x00041306 The last run of the task was terminated by the user.
+                            41307 {"SCHED_S_TASK_NO_VALID_TRIGGERS"} # 0x00041307 Either the task has no triggers or the existing triggers are disabled or not set.
+                            41308 {"SCHED_S_EVENT_TRIGGER"} # 0x00041308 Event triggers do not have set run times.
+                            80041309 {"SCHED_E_TRIGGER_NOT_FOUND"} # 0x80041309 A task's trigger is not found.
+                            8004130A {"SCHED_E_TASK_NOT_READY"} # 0x8004130A One or more of the properties required to run this task have not been set.
+                            8004130B {"SCHED_E_TASK_NOT_RUNNING"} # 0x8004130B There is no running instance of the task.
+                            8004130C {"SCHED_E_SERVICE_NOT_INSTALLED"} # 0x8004130C The Task Scheduler service is not installed on this computer.
+                            8004130D {"SCHED_E_CANNOT_OPEN_TASK"} # 0x8004130D The task object could not be opened.
+                            8004130E {"SCHED_E_INVALID_TASK"} # 0x8004130E The object is either an invalid task object or is not a task object.
+                            8004130F {"SCHED_E_ACCOUNT_INFORMATION_NOT_SET"} # 0x8004130F No account information could be found in the Task Scheduler security database for the task indicated.
+                            80041310 {"SCHED_E_ACCOUNT_NAME_NOT_FOUND"} # 0x80041310 Unable to establish existence of the account specified.
+                            80041311 {"SCHED_E_ACCOUNT_DBASE_CORRUPT"} # 0x80041311 Corruption was detected in the Task Scheduler security database; the database has been reset.
+                            80041312 {"SCHED_E_NO_SECURITY_SERVICES"} # 0x80041312 Task Scheduler security services are available only on Windows NT.
+                            80041313 {"SCHED_E_UNKNOWN_OBJECT_VERSION"} # 0x80041313 The task object version is either unsupported or invalid.
+                            80041314 {"SCHED_E_UNSUPPORTED_ACCOUNT_OPTION"} # 0x80041314 The task has been configured with an unsupported combination of account settings and run time options.
+                            80041315 {"SCHED_E_SERVICE_NOT_RUNNING"} # 0x80041315 The Task Scheduler Service is not running.
+                            80041316 {"SCHED_E_UNEXPECTEDNODE"} # 0x80041316 The task XML contains an unexpected node.
+                            80041317 {"SCHED_E_NAMESPACE"} # 0x80041317 The task XML contains an element or attribute from an unexpected namespace.
+                            80041318 {"SCHED_E_INVALIDVALUE"} # 0x80041318 The task XML contains a value which is incorrectly formatted or out of range.
+                            80041319 {"SCHED_E_MISSINGNODE"} # 0x80041319 The task XML is missing a required element or attribute.
+                            8004131A {"SCHED_E_MALFORMEDXML"} # 0x8004131A The task XML is malformed.
+                            8004131B {"SCHED_S_SOME_TRIGGERS_FAILED"} # 0x0004131B The task is registered, but not all specified triggers will start the task.
+                            8004131C {"SCHED_S_BATCH_LOGON_PROBLEM"} # 0x0004131C The task is registered, but may fail to start. Batch logon privilege needs to be enabled for the task principal.
+                            8004131D {"SCHED_E_TOO_MANY_NODES"} # 0x8004131D The task XML contains too many nodes of the same type.
+                            8004131E {"SCHED_E_PAST_END_BOUNDARY"} # 0x8004131E The task cannot be started after the trigger end boundary.
+                            8004131F {"SCHED_E_ALREADY_RUNNING"} # 0x8004131F An instance of this task is already running.
+                            80041320 {"SCHED_E_USER_NOT_LOGGED_ON"} # 0x80041320 The task will not run because the user is not logged on.
+                            80041321 {"SCHED_E_INVALID_TASK_HASH"} # 0x80041321 The task image is corrupt or has been tampered with.
+                            80041322 {"SCHED_E_SERVICE_NOT_AVAILABLE"} # 0x80041322 The Task Scheduler service is not available.
+                            80041323 {"SCHED_E_SERVICE_TOO_BUSY"} #  0x80041323 The Task Scheduler service is too busy to handle your request. Please try again later.
+                            80041324 {"SCHED_E_TASK_ATTEMPTED"} # 0x80041324 The Task Scheduler service attempted to run the task, but the task did not run due to one of the constraints in the task definition.
+                            80041325 {"SCHED_S_TASK_QUEUED"} # 0x00041325 The Task Scheduler service has asked the task to run.
+                            80041326 {"SCHED_E_TASK_DISABLED"} # 0x80041326 The task is disabled.
+                            80041327 {"SCHED_E_TASK_NOT_V1_COMPAT"} # 0x80041327 The task has properties that are not compatible with earlier versions of Windows.
+                            80041328 {"SCHED_E_START_ON_DEMAND"} # 0x80041328 The task settings do not allow the task to start on demand.
+                     }
+             }},TaskName
         }
         $ICSTObj
+        }
     }
     $ICSTPCObj|sort pscomputername,Lasttaskresult,TaskName | Out-GridView -Title "Scheduled Tasks"
 }
