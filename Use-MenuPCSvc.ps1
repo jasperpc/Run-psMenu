@@ -41,7 +41,7 @@ function chPCScolor($Script:PCS1,$Script:PCS2,$Script:PCS3,$Script:PCSNC)
 }
 function PCSvcMenu()
 {
-while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 7)
+while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 8)
     {
         Clear-Host
         Trap {"Error: $_"; Break;}        
@@ -88,6 +88,12 @@ while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 7)
             $p2 = "Service";
             $p3 = " on selected system";
             $NC = "Yellow";chPCScolor $Script:PCSp1 $p2 $p3 $NC
+# servce query
+        $Script:PCSMNUM ++;$Query_SelectSvc=$Script:PCSMNUM;
+            $Script:PCSp1 = " $Script:PCSMNUM. `t Query ";
+            $p2 = "Service";
+            $p3 = " on selected system";
+            $NC = "Yellow";chPCScolor $Script:PCSp1 $p2 $p3 $NC
         # Setting up the menu in this way allows you to move menu items around and have the numbering change automatically
         # It also allows you to put a word in the middle of the line and have it change color to be easier to see
         # $PCIMNum ++;$Script:PCI1 =" $PCIMNum.  FIRST";$Script:PCI2 = "HIGHLIGHTED ";$Script:PCI3 = "END"; $Script:PCINC = "yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
@@ -104,6 +110,7 @@ switch($PCSvcMenuSelect)
         $FW_Status{Clear-Host;FW-Status;Reload-PCSvcMenu}
         $Get_Set_ncp{Clear-Host;Get-Set-ncp;Reload-PCSvcMenu}
         $Restart_SelectSvc{Clear-Host;Restart-SelectSvc;Reload-PromptPCSvcMenu}
+        $Query_SelectSvc{Clear-Host;Query-SelectSvc;Reload-PromptPCSvcMenu}
 default
         {
             # cls
@@ -312,7 +319,7 @@ foreach($Global:pcLine in $Global:PCList)
 }
 Function Restart-SelectSvc()
 {
-$NLASvcPrompt = $null
+$SvcPrompt = $null
 if (($ServiceNamePrompt = Read-Host "Enter a service name or [Enter] to use default: NLASvc") -eq "") {$ServiceNamePrompt = "NLASvc"}
 <#
 In Windows 10, the nlasvc service must sometimes be restarted to force the network location to identify itself correctly
@@ -327,25 +334,25 @@ The firewall on the default public location is much more restrictive
     $Global:PCCnt = ($Global:PCList).Count
     if ($Global:PCCnt -gt 1)
     {
-        $NLASvcPrompt =Read-Host "You have more $Global:PCCnt systems selected. Type Y to restart the NLASvc on all systems"
+        $SvcPrompt =Read-Host "You have $Global:PCCnt systems selected. Type Y to restart the $ServiceNamePrompt on all systems"
     }
-    else{$NLASvcPrompt = "Y"}
-    if ($NLASvcPrompt -eq "Y")
+    else{$SvcPrompt = "Y"}
+    if ($SvcPrompt -eq "Y")
     { 
         $SvcObjResult = foreach($Global:pcLine in $Global:PCList)
         {
             Identify-PCName # Called from Run-PSMenu.ps1
             If (Test-Connection $Global:pc -Count 1 -Quiet)
             {
-                $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
+                $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC # |Select MachineName,Name,Status,StartType 
                 # $getSvc |FT
                 If ($getSvc.Status -eq "Stopped")
                 {
-                    $getSvcPrompt = Read-Host "Would you like to restart the NLASvc? (Y if Yes)"
+                    $getSvcPrompt = Read-Host "Would you like to restart the $ServiceNamePrompt service? (Y if Yes)"
                     if ($getSvcPrompt -eq "Y")
                     {
-                        Write-Host "`nAttempting to restart the Network Location Awareness service (nlasvc)" -ForegroundColor Green
-                        Restart-Service $ServiceNamePrompt -Force
+                        Write-Host "`nAttempting to restart the $ServiceNamePrompt service" -ForegroundColor Green
+                        $getSvc |Restart-Service -Force
                         $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
                     }
                 }
@@ -365,3 +372,60 @@ The firewall on the default public location is much more restrictive
     $SvcObjResult |FT
 }
 
+Query-SelectSvc
+Function Query-SelectSvc()
+{
+$SvcPrompt = $null
+if (($ServiceNamePrompt = Read-Host "Enter a service name or [Enter] to use default: NLASvc") -eq "") {$ServiceNamePrompt = "NLASvc"}
+<#
+In Windows 10, the nlasvc service must sometimes be restarted to force the network location to identify itself correctly
+When it does not know where it is, Outlook cannot connect to the exchange server even if the pc has an IP address and can get to the internet.
+The firewall on the default public location is much more restrictive
+#>
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $Global:PCCnt = ($Global:PCList).Count
+    if ($Global:PCCnt -gt 1)
+    {
+        $SvcPrompt =Read-Host "You have $Global:PCCnt systems selected. Type Y to view the NLASvc on all systems"
+    }
+    else{$SvcPrompt = "Y"}
+    if ($SvcPrompt -eq "Y")
+    { 
+        $SvcObjResult = foreach($Global:pcLine in $Global:PCList)
+        {
+            Identify-PCName # Called from Run-PSMenu.ps1
+            If (Test-Connection $Global:pc -Count 1 -Quiet)
+            {
+                $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
+                # $getSvc |FT
+                <#
+                If ($getSvc.Status -eq "Stopped")
+                {
+                    $getSvcPrompt = Read-Host "Would you like to restart the service: $ServiceNamePrompt? (Y if Yes)"
+                    if ($getSvcPrompt -eq "Y")
+                    {
+                        Write-Host "`nAttempting to restart the Network Location Awareness service (nlasvc)" -ForegroundColor Green
+                        Restart-Service $ServiceNamePrompt -Force
+                        $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
+                    }
+                }
+                #>
+                New-Object PSObject -Property @{
+                    pscomputername = $Global:PC;
+                    MachineName = $getSvc.MachineName;
+                    Name = $getSvc.Name;
+                    Status = $getSvc.Status;
+                    StartType  = $getSvc.StartType
+                    }
+            }
+            $SvcObjResult += $SvcObjResult
+        }
+    }
+    else
+    {Write-Warning "You may use the menu to select only a single system if you wish"}
+    $SvcObjResult |FT
+}
