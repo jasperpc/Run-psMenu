@@ -67,13 +67,13 @@ Function chcolor($Script:UnGp1,$Script:UnGp2,$Script:UnGp3,$Script:UnGNC){
 # (Get-ADUser -filter 'SamAccountName -like $ADUser1' -Properties * |Select-Object -property @{n="ADUserInfo";e={$_.SamAccountName,$_.memberof}}|select -ExpandProperty ADUserInfo)
 Function UnGMenu()
 {
-    while ($UnGMenuselect -lt 1 -or $UnGMenuselect -gt 15)
+    while ($UnGMenuselect -lt 1 -or $UnGMenuselect -gt 16)
     {
         Trap {"Error: $_"; Break;}        
         $UnGMNum = 0;Clear-host |out-null
         Start-Sleep -m 50
         if ($Global:PCCnt -eq $null) {$Global:PCCnt = 0}Else {$Global:PCCnt = ($Global:PCList).Count}
-        $Script:ADd4 = "------------Use-Users and Groups Menu ($Global:PCCnt Systems currently selected)----------------"
+        $Script:UnGd4 = "------------Use-Users and Groups Menu ($Global:PCCnt Systems currently selected)----------------"
         Write-host $Script:UnGt4 $Script:UnGd4 -ForegroundColor Green
         # Exit to Main Menu
         $UnGMNum ++;$adExit = $UnGMNum; 
@@ -88,9 +88,14 @@ Function UnGMenu()
             $Script:UnG2 = "PC List ";$Script:UnG3 = "for use in script ($Global:PCCnt Systems currently selected)."; $Script:UnGNC = "DarkCyan";chcolor $Script:UnG1 $Script:UnG2 $Script:UnG3 $Script:UnGNC
 # List which user(s) are logged onto selected computer(s) listed in the domain
         $UnGMNum ++;$Find_UsrsOnPCs = $UnGMNum;
-		    $Script:UnGp1 =" $UnGMNum. `tList ";
-		    $Script:UnGp2 = "IPs and users ";
-		    $Script:UnGp3 = " logged into selected computers. (non-local)`n$Script:UnGt4$Script:UnGt4$Script:UnGt4---"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
+		    $Script:UnGp1 =" $UnGMNum. `tUse PC/IP list to ";
+		    $Script:UnGp2 = "find IPs and users ";
+		    $Script:UnGp3 = "logged into selected systems. (non-local)"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
+# List Users assigned to PC
+        $UnGMNum ++;$Find_PCsUser = $UnGMNum;
+		    $Script:UnGp1 =" $UnGMNum. `tUse PC/IP List to ";
+		    $Script:UnGp2 = "view Users ";
+		    $Script:UnGp3 = "assigned to PCs.`n$Script:UnGt4$Script:UnGt4$Script:UnGt4---"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
 # AD Manage AD Users menu
         $UnGMNum ++;$Inv_Manage_ADUsers = $UnGMNum;
 		    $Script:UnGp1 =" $UnGMNum. `tOpen";
@@ -156,8 +161,9 @@ Function UnGMenu()
     {
         $adExit{$UnGMenuselect=$null}
         $GCred{Clear-Host;Get-Cred;$UnGMenuselect=$null;reload-PromptUnGMenu}
-        $Get_PCList{Clear-Host;Get-PCList;reload-PromptUnGMenu}
+        $Get_PCList{Clear-Host;Get-PCList;reload-NoPromptUnGMenu}
         $Find_UsrsOnPCs{$UnGMenuselect=$null;Find-UsrsOnPCs;reload-PromptUnGMenu} # Good one to multi-thread
+        $Find_PCsUser{$UnGMenuselect=$null;Find-PCsUser;reload-PromptUnGMenu}
         $Inv_Manage_ADUsers{$UnGMenuselect=$null;Invoke-Expression ".\Manage-ADUsers.ps1";reload-NoPromptUnGMenu}
         $Get_GroupMembership{$UnGMenuselect=$null;Clear-Host;Get-GroupMembership;reload-PromptUnGMenu}
         $Find_UserPCs{$UnGMenuselect=$null;Find-UserPCs;reload-PromptUnGMenu}
@@ -329,6 +335,49 @@ Function Find-UserPCs
     {
         get-adcomputer -Filter * -Properties *|where {$_.enabled -eq $true -and $_.Description -like "*$LName*"}|ft Description,Name -autosize -wrap
     }
+}
+Function Find-PCsUser
+{
+    # Where Users's first and last names are in the description of a Computer object
+    # this will list the User and the associated computer
+    # Use this format for the Computer Object Description: "First Last, Optional Extended Description"
+    Clear-Host
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $PCsUserRslt = foreach ($Global:pcLine in $Global:PCList)
+    {
+        Identify-PCName
+        $PCDescription = (Get-ADComputer $Global:PC -Properties * |select Description).Description
+        $PCDescLikeQuery = ($PCDescription.split(","))[0]
+        $GADUserRslt = Get-ADUser -Filter * -Properties * |where {$_.Name -like $PCDescLikeQuery}|select SAMAccountName, Name, Mail, EmailAddress, Enabled
+        if ($GADUserRslt){
+        $PCsUserProperties = @{'SystemName'=$Global:PC;
+                        'SamAccountName'=$GADUserRslt.SAMAccountName;
+                        'Name'=$GADUserRslt.Name;
+                        'Mail'=$GADUserRslt.Mail;
+                        'Description'=$PCDescription;
+                        'EmailAddress' = $GADUserRslt.EmailAddress;
+                        'Enabled' = $GADUserRslt.Enabled}
+        }
+        Else{
+        $PCsUserProperties = @{'SystemName'=$Global:PC;
+                'SamAccountName'=$GADUserRslt.SAMAccountName;
+                'Name'=$PCDescription;
+                'Mail'=$GADUserRslt.Mail;
+                'Description'=$PCDescription;
+                'EmailAddress' = $GADUserRslt.EmailAddress;
+                'Enabled' = $GADUserRslt.Enabled}
+        }
+        New-Object -TypeName PSObject -Prop $PCsUserProperties
+    $PCDescription = $null
+    $PCDescLikeQuery = $null
+    $GADUserRslt = $null
+    }
+
+    $PCsUserRslt |ft SystemName, SAMAccountName, Description, Mail, EmailAddress, Name, Enabled -Wrap -AutoSize
 }
 
 Function Find-UsrsOnPCs()
