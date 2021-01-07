@@ -337,11 +337,13 @@ foreach ($ADUserTarget in $ADUsersList)
 Function get-aduserlist()
 {
     Clear-Host
+    $SearchText = $null
     # $ADUserList = get-aduser -Filter * |Select-Object SamAccountName, Name # |Export-Csv 20151015ADUsers.csv
-    $ADUserList = Start-job -Name BuildADUserList -ScriptBlock {get-aduser -Filter * -Properties *|where {$_.enabled -eq "true"} |Select-Object SamAccountName, Name,CanonicalName,LastLogonDate,Created,mail,address}|wait-job |Receive-Job # |Export-Csv 20151015ADUsers.csv
+    if(($SearchText = Read-Host "Enter search criteria for all or part of the samaccountname using * as wildcard [ENTER] for all") -eq ""){$SearchText = "*"}
+    $Fltr = "samaccountname -like `"$SearchText`""
+    $ADUL = get-aduser -Filter $Fltr -Properties *|where {$_.enabled -eq "true"} |Select-Object SamAccountName, Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName
     Start-Sleep 1
-    # $ADUserList |ft SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address -AutoSize -Wrap
-    $ADUserList |Select SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address |Out-GridView 
-    get-job -name BuildADUserList |Remove-Job
+    $ADUL|Select SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName |Out-GridView 
+    # $ADUL|ft SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address -AutoSize -Wrap
 }
 MADUmenu
