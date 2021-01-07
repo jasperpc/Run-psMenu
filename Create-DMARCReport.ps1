@@ -210,7 +210,9 @@ foreach($WorkingFileLine in $WorkingFiles)
                         $F_rardkimResult = $Record.auth_results.dkim.result
                         $F_rardkimSelector = $Record.auth_results.dkim.selector
                         $F_rarspfDomain = $Record.auth_results.spf.domain
+                        if ($R1.spf -eq "fail"){$F_rarspfDomain = "<font color=`"Red`">$F_rarspfDomain</font>"} # Highlight a failed SPF Domain when SPF fails
                         $F_rarspfResult = $Record.auth_results.spf.result
+                        if ($R1.spf -eq "fail"){$F_rarspfResult = "<font color=`"Red`">$F_rarspfResult</font>"} # Highlight failed SPF result when SPF fails
                         $F_rChildNodes = $Record.ChildNodes # Unused
                         $R1 = @{
                             F_mtRptID = $F_mtRptID
