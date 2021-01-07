@@ -223,13 +223,10 @@ Function get-apps()
     Write-Warning "Selecting systems on which to look for applications"
     $ObjInstW32Out = foreach ($Global:pcLine in $Global:PCList)
     {
-        Write-Host "." -nonewline
             Identify-PCName
-        
-        If (Test-Connection $Global:pc -Count 1 -Quiet)
-        {
             if (Test-Connection $Global:PC -Count 1 -ErrorAction SilentlyContinue -ErrorVariable W32Error)
             {
+            Write-Host "." -nonewline -ForegroundColor Green
                 $InstW32 = Get-WmiObject -class Win32_installedwin32program -ComputerName $Global:PC -Credential $cred -ErrorAction SilentlyContinue -ErrorVariable W32Error |where {$_.name -ilike "$prglist"} |select pscomputername,Name,Version
                 foreach ($InstW32Line in $InstW32)
                 {
@@ -247,6 +244,7 @@ Function get-apps()
             }
             Else
             {
+            Write-Host "." -nonewline -ForegroundColor Red
                     $OBInstW32Properties = @{'pscomputername'=$Global:PC;
                         'Name'= "Unknown";
                         'Version'="";
@@ -255,7 +253,6 @@ Function get-apps()
                     New-Object -TypeName PSObject -Prop $OBInstW32Properties 
                     $W32Error = $null
             }
-        }
     }
     "`n"
     $ObjInstW32Out |Sort-Object WMIError,PSComputerName,Name |select pscomputername,Name,Version,Date,WMIError | FT -AutoSize -Wrap #Out-GridView # |ConvertTo-Csv -NoTypeInformation |select -Skip 1 |Out-File -Append ".\ProgsInPC.csv"
