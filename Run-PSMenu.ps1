@@ -53,9 +53,7 @@ $PSVersionTable.PSVersion
 
 # Enable if needed
 # $Use_MMFPath = Split-Path -Parent $PSCommandPath
-
 $Script:t4 = "`t`t`t`t"
-$Script:d4 = "----------------------------- Run-PSMenu -------------------------------"
 $Script:NC = $null
 $Script:p1 = $null
 $Script:p2 = $null
@@ -78,12 +76,16 @@ Function chcolor($p1,$p2,$p3,$NC){
 
 Function menu()
 {
-while ($menuselect -lt 1 -or $menuselect -gt 11)
+while ($menuselect -lt 1 -or $menuselect -gt 12)
 {
     Clear-Host
         Trap {"Error: $_"; Break;}        
         $MNum = 0;Clear-host |out-null
         Start-Sleep -m 50
+        if ($Global:PCCnt -eq $null) 
+        {$Global:PCCnt = 0;$Script:d4 = "-------------------------------- Run-PSMenu --------------------------------"}
+        Else 
+        {$Global:PCCnt = ($Global:PCList).Count;$Script:d4 = "---------------- Run-PSMenu ($Global:PCCnt Systems currently selected) ----------------"}
         Write-host $t4 $d4 -ForegroundColor Green
 #    Exit from the Main Menu
         $MNum ++;
@@ -97,6 +99,11 @@ while ($menuselect -lt 1 -or $menuselect -gt 11)
             $p1 =" $MNum.  `t Enter";
             $p2 = "Credentials ";
             $p3 = "for use in script."; $NC = "Cyan";chcolor $p1 $p2 $p3 $NC
+#    List Systems currently in the $Global:PCList variable
+            $MNum ++;$List_PCList=$MNum;
+            $p1 =" $MNum.  `t List";
+            $p2 = "Global PCList variable ";
+            $p3 = "contents."; $NC = "Cyan";chcolor $p1 $p2 $p3 $NC
 #    Net Utilities Menu
             # Go to the Net Utilities Menu
         $MNum ++;$Use_MenuNet=$MNum;
@@ -164,6 +171,7 @@ switch($menuselect)
         # 1{}
         $Exit{$MenuSelect=$null}
         $Get_Cred{Clear-Host;Get-Cred;$menuselect = $null;menu}
+        $List_PCList{Clear-Host;$Global:PCList;reload-PromptMenu}
         $Use_MenuNet{. .\Use-MenuNet.ps1;NetMenu;reload-NoPromptMenu}
         $Use_MenuUserNGroup{. .\Use-MenuUserNGroup.ps1;UnGmenu;reload-NoPromptMenu}
         $Use_MenuPC{. .\Use-MenuPC.ps1;PCMenu;reload-NoPromptMenu}

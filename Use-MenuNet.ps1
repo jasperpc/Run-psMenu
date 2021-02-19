@@ -26,6 +26,7 @@
     To see more information, type: help Use-MenuNet.ps1 -detailed
 .TODO
     Fix the network PING connection persistence function so that it exits gracefully
+    Configure the function Get-hostname to gather the results into an object
 #>
 # set script variables
 # [BOOLEAN]$Global:ExitSession=$false
@@ -320,15 +321,28 @@ Function Get-hostname()
     {
     Write-Warning "The Current list is: $Global:PCList"
     }
-    foreach($Global:pcline in $Global:pclist)
+    $VIPObjectOut = foreach($Global:pcline in $Global:pclist)
     {
-        if (Test-ValidIP $Global:pcline)
+        Identify-PCName
+        if (Test-ValidIP $Global:pc)
         {
-            $GHAddress = [System.Net.DNS]::GetHostByAddress($Global:PCline)
-            $GHAddress | select * |ft
+            $GHAddress = [System.Net.DNS]::GetHostByAddress($Global:PC)
+                $VIPOBProperties = @{'HostName'=$GHAddress.HostName;
+                'AddressList'=$GHAddress.AddressList;
+                'Aliases'=$GHAddress.Aliases;
+                'Query'=$Global:PC}
+        New-Object -TypeName PSObject -Prop $VIPOBProperties
+        }
+        Else
+        {
+            $VIPOBProperties = @{'HostName'=$Global:PC;
+                'AddressList'=$GHAddress.AddressList;
+                'Aliases'=$GHAddress.Aliases;
+                'Query'="$Global:PC is not a Valid IP Address"}
+        New-Object -TypeName PSObject -Prop $VIPOBProperties
         }
     }
-        
+    $VIPObjectOut | select * |ft Hostname, AddressList, Query, Aliases
 }
 # Identify valid IP address from input
 Function Test-ValidIPPrompt # Depends on Test-ValidIP

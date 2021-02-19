@@ -19,7 +19,9 @@
 .REMARKS
     
 .TODo
-    
+    In functions like Find-PCsUser test for IP address and get the system name from the IP if necessary prior to querying against it.
+        See the following functions in Use-MenuNet.ps1: Get-hostname, Test-ValidIP, and Test-ValidIPPrompt
+    In Function Get-GroupMembership we need to change the above configuration to also pull in Contacts it is in the works
 #>
 
 <#
@@ -86,16 +88,16 @@ Function UnGMenu()
     # Get PCList
         $UnGMNum ++;$Get_PCList=$UnGMNum;$Script:UnG1 =" $UnGMNum.  `tGet";
             $Script:UnG2 = "PC List ";$Script:UnG3 = "for use in script ($Global:PCCnt Systems currently selected)."; $Script:UnGNC = "DarkCyan";chcolor $Script:UnG1 $Script:UnG2 $Script:UnG3 $Script:UnGNC
-# List which user(s) are logged onto selected computer(s) listed in the domain
-        $UnGMNum ++;$Find_UsrsOnPCs = $UnGMNum;
-		    $Script:UnGp1 =" $UnGMNum. `tUse PC/IP list to ";
-		    $Script:UnGp2 = "find IPs and users ";
-		    $Script:UnGp3 = "logged into selected systems. (non-local)"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
 # List Users assigned to PC
         $UnGMNum ++;$Find_PCsUser = $UnGMNum;
 		    $Script:UnGp1 =" $UnGMNum. `tUse PC/IP List to ";
 		    $Script:UnGp2 = "view Users ";
-		    $Script:UnGp3 = "assigned to PCs.`n$Script:UnGt4$Script:UnGt4$Script:UnGt4---"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
+		    $Script:UnGp3 = "assigned to PCs."; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
+# List which user(s) are logged onto selected computer(s) listed in the domain
+        $UnGMNum ++;$Find_UsrsOnPCs = $UnGMNum;
+		    $Script:UnGp1 =" $UnGMNum. `tUse PC/IP list to ";
+		    $Script:UnGp2 = "find IPs and users ";
+		    $Script:UnGp3 = "logged into selected systems. (non-local)`n$Script:UnGt4$Script:UnGt4$Script:UnGt4---"; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
 # AD Manage AD Users menu
         $UnGMNum ++;$Inv_Manage_ADUsers = $UnGMNum;
 		    $Script:UnGp1 =" $UnGMNum. `tOpen";
@@ -162,8 +164,8 @@ Function UnGMenu()
         $adExit{$UnGMenuselect=$null}
         $GCred{Clear-Host;Get-Cred;$UnGMenuselect=$null;reload-PromptUnGMenu}
         $Get_PCList{Clear-Host;Get-PCList;reload-NoPromptUnGMenu}
-        $Find_UsrsOnPCs{$UnGMenuselect=$null;Find-UsrsOnPCs;reload-PromptUnGMenu} # Good one to multi-thread
         $Find_PCsUser{$UnGMenuselect=$null;Find-PCsUser;reload-PromptUnGMenu}
+        $Find_UsrsOnPCs{$UnGMenuselect=$null;Find-UsrsOnPCs;reload-PromptUnGMenu} # Good one to multi-thread
         $Inv_Manage_ADUsers{$UnGMenuselect=$null;Invoke-Expression ".\Manage-ADUsers.ps1";reload-NoPromptUnGMenu}
         $Get_GroupMembership{$UnGMenuselect=$null;Clear-Host;Get-GroupMembership;reload-PromptUnGMenu}
         $Find_UserPCs{$UnGMenuselect=$null;Find-UserPCs;reload-PromptUnGMenu}
@@ -262,12 +264,16 @@ Function Get-GroupMembership() # Include PC Name where User name is listed in PC
 param(
 [Parameter(Mandatory=$False)]
 
-$ADG = (Read-Host "Enter name of one group for which you wish to see members. (ex. Domain Admins)")
-
+$ADGPrompt = (Read-Host "Enter name of one group for which you wish to see members. (ex. Domain Admins)")
 )
+    $ADG = Get-ADGroup $ADGPrompt -Properties * | Select-Object -property @{n="ADGroupInfo";e={$_.distinguishedname,$_.members}} |select -ExpandProperty ADGroupInfo
     $adgm = $null
     Write-Warning "`nRunning:`tGet-ADGroupMember -Identity $ADG"
-    $adgm = Get-ADGroupMember -Identity $ADG -Recursive |sort ObjectClass,Name,Description # |seleqct * # Name,SamAccountname,distinguishedName,ObjectClass
+    # 
+    $adgm = Get-ADGroupMember -Identity $ADGPrompt -Recursive |sort ObjectClass,Name,Description # |select * # Name,SamAccountname,distinguishedName,ObjectClass
+
+    # Need to change the above configuration to also pull in Contacts 
+    # $adgm = Get-ADObject -filter * -Properties MemberOf,Mail |where {$ADGPrompt -contains $_.memberof}
     $AUnP = foreach ($adgmRec in $adgm)
     {
         If ($adgmRec.ObjectClass -eq "user" -or $adgmRec.ObjectClass -eq "computer")

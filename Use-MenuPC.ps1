@@ -51,7 +51,7 @@ Function chPCcolor($Script:PCp1,$Script:PCp2,$Script:PCp3,$Script:PCNC){
 
 Function PCmenu()
 {
-    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 20)
+    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 22)
     {
         Trap {"Error: $_"; Break;}        
         $PCMNum = 0;Clear-host |out-null
@@ -106,6 +106,16 @@ Function PCmenu()
             $Script:PCp1 =" $PCMNum. `t View ";
 		    $Script:PCp2 = "Startups ";
 		    $Script:PCp3 = "on PCs "; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
+# View PC Startups
+        $PCMNum ++;$Retrieve_BitlockerKey = $PCMNum;
+            $Script:PCp1 =" $PCMNum. `t Retrieving ";
+		    $Script:PCp2 = "BitLocker Recovery Key ";
+		    $Script:PCp3 = "information from selected PCs "; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
+# View Registry property value
+        $PCMNum ++;$Manage_HKLM = $PCMNum;
+            $Script:PCp1 =" $PCMNum. `t View ";
+		    $Script:PCp2 = "Registry Property ";
+		    $Script:PCp3 = "Value(s) "; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
 # Reset Internet Explorer 
         $PCMNum ++;$Reset_IE = $PCMNum;
             $Script:PCp1 =" $PCMNum. `t Reset ";
@@ -215,6 +225,8 @@ switch($PCmenuselect)
     $Get_OldDCPCs{$PCmenuselect = $null;Get-OldDCPCs;reload-PromptPCmenu}
     $Test_CritSysLive{Test-CritSysLive;reload-PromptPCmenu}
     $Get_ADPcStarts{$PCmenuselect = $null;Get-ADPcStarts;reload-PromptPCmenu}
+    $Retrieve_BitlockerKey{$PCmenuselect = $null;Retrieve-BitlockerKey;reload-PromptPCmenu}
+    $Manage_HKLM{Manage-HKLM;reload-PromptPCmenu}
     $Reset_IE{$PCmenuselect = $null;Reset-IE;reload-PromptPCmenu}
     $Call_Get_SysEvents{$PCmenuselect = $null;Call-Get-SysEvents $Global:PCList $Global:Cred;reload-PromptPCmenu}
     $Get_RDPStats{Get-RDPStats;reload-PromptPCmenu}
@@ -388,10 +400,14 @@ Function Get-PCProcess
     }
     foreach ($Global:PCLine in $Global:PCList)
     {
+        
         Identify-PCName # Called from Run-PSMenu.ps1
-        $logonInfo = get-wmiobject win32_process -computername $Global:PC -Credential $cred| select Name,sessionId,Creationdate  |Where-Object {($_.Name -like "PrintIsolationHost.exe*")} # Logon*")} 
-        Write-Host "`nRunning: wmi search to see if the logon processes is running on $Global:PC ...`n"
-        if ($logonInfo){$logonInfo} Else {Write-Output "Logon process not found for $Global:PC"}
+        If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue) # Only attempt to get information from computers that are reachable with a ping
+        {
+            $logonInfo = get-wmiobject win32_process -computername $Global:PC -Credential $cred| select Name,sessionId,Creationdate  |Where-Object {($_.Name -like "PrintIsolationHost.exe*")} # Logon*")} 
+            Write-Host "`nRunning: wmi search to see if the logon processes is running on $Global:PC ...`n"
+            if ($logonInfo){$logonInfo} Else {Write-Output "Logon process not found for $Global:PC"}
+        }
     }
 }
 Function Test-CritSysLive()
@@ -399,7 +415,11 @@ Function Test-CritSysLive()
     Clear-Host
     $err=@()
     Write-Host "`t.\Critsys.txt contains a list of critical systems to check with this function." -ForegroundColor DarkYellow
-    Get-PCList
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
     Write-Host "Testing.." -nonewline
     $ObjectOut = foreach ($Global:PCLine in ($Global:PCList))
         {
@@ -558,7 +578,7 @@ Function Get-OldDCPCs() # View AD Computer last logon times
 Function List-DomPCs()
 {
     Clear-Host
-    Get-ADComputer -filter 'objectclass -eq "Computer"' -Properties dnshostname| select @{n="FQDN";e={($_ | select -ExpandProperty dnshostname)-join ','}}|ft -autosize
+    Get-ADComputer -filter 'objectclass -eq "Computer"' -Properties dnshostname,Enabled,SamAccountName,UserPrincipalName,Name,DistinguishedName|Where {$_.Enabled -eq $true}| select @{n="FQDN";e={($_ | select -ExpandProperty dnshostname)-join ','}},Name,Enabled,SamAccountName,DistinguishedName|sort FQDN|ft -autosize
 }
 
 Function Active-ScrnSav()
@@ -675,26 +695,34 @@ Function Get-ScheduledTaskInformation
 Function View-Certificates()
 {
     Clear-Host
-    Get-PCList
-    $ObjectOut = foreach ($Global:PCline in $Global:PCList)
+    $CertPath = "Cert:\LocalMachine"
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $CertObjectOut = foreach ($Global:PCline in $Global:PCList)
     {
     Identify-PCName
-    $certs = invoke-command {gci Cert:\LocalMachine\My -Recurse} -computername $Global:PC -Credential $cred
-    # Set-Location Cert:\LocalMachine\My
-    Write-Host = $Global:PC
-    foreach ($Cert in $Certs)
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
         {
-            $CertOBProperties = @{'pscomputername'=$Global:PC;
-                        'Issuer'=($cert.Issuer);
-                        'Subject'=($cert.Subject);
-                        'NotBefore'=($cert.NotBefore);
-                        'notafter'=($cert.notafter);
-                        'DateChanged'=$CDAte}
-                New-Object -TypeName PSObject -Prop $CertOBProperties
+        $certs = invoke-command {gci "Cert:\LocalMachine" -Recurse} -computername $Global:PC -Credential $cred
+        # Set-Location Cert:\LocalMachine\My
+        Write-Host = $Global:PC
+        foreach ($Cert in $Certs)
+            {
+                $CertOBProperties = @{'pscomputername'=$Global:PC;
+                            'Issuer'=($cert.Issuer);
+                            'Subject'=($cert.Subject);
+                            'NotBefore'=($cert.NotBefore);
+                            'notafter'=($cert.notafter);
+                            'DateChanged'=$CDAte}
+                    New-Object -TypeName PSObject -Prop $CertOBProperties
+            }
+        #Get-ChildItem -Recurse cert: |select Subject, notafter
         }
-    #Get-ChildItem -Recurse cert: |select Subject, notafter
     }
-    $ObjectOut |select PSComputerName, Issuer, Subject, NotBefore, notafter|sort NotAfter |Out-Gridview
+    $CertObjectOut |select PSComputerName, Issuer, Subject, NotBefore, notafter|sort NotAfter |Out-Gridview -Title $CertPath
 }
 Function Get-OSArch()
 {
@@ -754,6 +782,116 @@ Function get-WinSAT()
     }
     $wsatResults |sort pscomputername,winsprlevel,cpuscore,diskscore,memoryscore,graphicsscore |ft
 }
+function Manage-HKLM
+{
+Clear-Host
+$HKEY = $null
+if (($HKPrompt = Read-Host "`nType a Key (like hklm,hkcu,hkcr,etc) or press [Enter] to use the default key: hklm") -eq "") {$HKPrompt = "hklm"}
+if ($HKPrompt -eq "hklm"){$HKey="HKEY_LOCAL_MACHINE"}
+elseif($HKPrompt -eq "hkcu"){$HKey="HKEY_CURRENT_USER"}
+elseif($HKPrompt -eq "hkcr"){$HKey="HKEY_CLASSES_ROOT"}
+$psdhkey = $null
+$psdhkeyName = $null
+$npsd = $null
+$pathroot = $null
+$path = $null
+if ($Global:PCList -eq $null)
+{
+    Get-PCList
+}
+if (($PropertyName = Read-Host "`nType a Property Name to view or [Enter] to use default: RequireSecuritySignature") -eq "") {$PropertyName = "RequireSecuritySignature"}
+$DefaultMidPath = "SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"
+if (($MidPath = Read-Host "`nType the path exclude the root and the property [Enter] to use default:`n`t $DefaultMidPath") -eq "") {$MidPath = $DefaultMidPath}
+
+    $HKObjectOut = foreach ($Global:PCline in $Global:PCList)
+    {
+        Identify-PCName
+        if(Test-Connection -ComputerName $Global:PC -Count 1 -ea 0) {
+            Write-host "." -NoNewline -ForegroundColor Green
+            $psdhkey = "$Global:pc"+"\"+"$HKPrompt"
+            $psdhkeyName = "$Global:pc"+"$HKPrompt"
+            $npsess = New-PSSession -ComputerName $Global:PC -Credential $Cred -Name $psdhkeyName -ErrorVariable pssError -ErrorAction SilentlyContinue
+            if (!$pssError)
+            {
+            $npsd = Invoke-Command -Session $npsess -ScriptBlock {New-PSDrive -PSProvider Registry -Name $using:psdhkeyName -root $using:HKey}  
+                $pathroot  = Invoke-Command -Session $npsess -ScriptBlock {$using:npsd.Name + ":"}
+                $path  = Invoke-Command -Session $npsess -ScriptBlock {$using:pathroot +$using:MidPath}
+                $G_IP  = Invoke-Command -Session $npsess -ScriptBlock {Get-ItemProperty $using:path}
+                $PropertyValue = ($G_IP).$PropertyName
+                $srvComment = ($G_IP).srvComment
+                Invoke-Command -Session $npsess -ScriptBlock {Remove-PSDrive $using:npsd}
+                Remove-PSSession -Name $psdhkeyName
+            }
+            Else
+            {
+                $pathroot = ""
+                $path = ""
+                $propertyValue = ""
+                $srvComment = "Error connecting to $Global:PC"
+            }
+                $HKOBProperties = @{'pscomputername'=$Global:PC;
+                    'HKPrompt'=$HKPrompt;
+                    'psdhkey'=$psdhkey;
+                    'psdhkeyName'=$psdhkeyName;
+                    'pathroot'=$pathroot;
+                    'MidPath'=$MidPath;
+                    'path'=$path;
+                    'PropertyName'=$PropertyName;
+                    'PropertyValue'=$PropertyValue;
+                    'srvComment'=$srvComment}
+                New-Object -TypeName PSObject -Prop $HKOBProperties
+        }
+        else
+        {
+            Write-host "." -NoNewline -ForegroundColor Red
+        }
+    $psdhkey = $null
+    $psdhkeyName = $null
+    $npsd = $null
+    $pathroot = $null
+    $path = $null
+    $npsess = $null
+    $G_IP = $null
+    $pssError = $null
+    }
+    # $HKObjectOut |select pscomputername,HKPrompt,psdhkey,psdhkeyName,pathroot,MidPath,path,PropertyName,PropertyValue,srvComment |Out-GridView -Title "$MidPath $PropertyName"
+    $HKObjectOut |select pscomputername,HKPrompt,MidPath,PropertyName,PropertyValue,srvComment |Out-GridView -Title "$MidPath $PropertyName"
+}
+
+Function Retrieve-BitlockerKey
+{
+    Clear-Host
+    # Using the following to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    Write-Warning "Getting BitLocker Recovery information from the following list : $Global:PCList"
+    $BitLOBjectOut = foreach($Global:pcLine in $Global:PCList)
+    {
+        Identify-PCName # Called from Run-PSMenu.ps1
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            $ADPCObj = Get-ADComputer $Global:PC
+            $Bitlocker_Object = Get-ADObject -Filter {objectclass -eq 'msFVE-RecoveryInformation'} -SearchBase $ADPCObj.DistinguishedName -Properties 'msFVE-RecoveryPassword'
+            
+                $BitLOBProperties = @{'pscomputername'=$Global:PC;
+                    'DistinguishedName'=$HKPrompt;
+                    'msFVE-RecoveryPassword'=$Bitlocker_Object.'msFVE-RecoveryPassword';
+                    'Name'=$Bitlocker_Object.Name;
+                    'ObjectClass'=$Bitlocker_Object.ObjectClass;
+                    'ObjectGUID'=$Bitlocker_Object.ObjectGUID}
+                New-Object -TypeName PSObject -Prop $BitLOBProperties
+
+        }
+    }
+    $BitLOBjectOut|where {$_.'msFVE-RecoveryPassword'}|sort pscomputername |FT pscomputername,msFVE-RecoveryPassword,ObjectClass -autosize -Wrap # ,ObjectGUID,Name,DistinguishedName
+    [console]::beep(559,250);[console]::beep(559,100);[console]::beep(559,100);Start-sleep -milliseconds 250; # https://devblogs.microsoft.com/scripting/powertip-use-powershell-to-send-beep-to-console/
+    [console]::beep(559,250);[console]::beep(559,250);[console]::beep(559,250);Start-sleep -milliseconds 250;
+    [console]::beep(559,250);[console]::beep(559,100);Start-sleep -milliseconds 250;
+    [console]::beep(559,100)
+
+}
     <#
     # Use the following if we want to retain a single PCList across many menu functions 
     if ($Global:PCList -eq $null)
@@ -765,3 +903,5 @@ Function get-WinSAT()
     {
     }
     #>
+
+    

@@ -228,18 +228,32 @@ Function get-apps()
             {
             Write-Host "." -nonewline -ForegroundColor Green
                 $InstW32 = Get-WmiObject -class Win32_installedwin32program -ComputerName $Global:PC -Credential $cred -ErrorAction SilentlyContinue -ErrorVariable W32Error |where {$_.name -ilike "$prglist"} |select pscomputername,Name,Version
-                foreach ($InstW32Line in $InstW32)
+                if ($InstW32)
                 {
-                    if ($InstW32Line -eq $null)
-                    {if ($W32Error){$W3get2Names = "Error"}elseif ($InstW32Line.Name){$W32Names = "UNK"}} 
-                        $OBInstW32Properties = @{'pscomputername'=$Global:PC;
-                            'Name'=($InstW32Line.Name);
-                            'Version'=($InstW32Line.Version);
-                            'Date'=$CDAte;
-                            'WMIError' = $W32Error}
+                    foreach ($InstW32Line in $InstW32)
+                    {
+                        if ($InstW32Line -eq $null)
+                        {if ($W32Error){$W3get2Names = "Error"}elseif ($InstW32Line.Name){$W32Names = "UNK"}} 
+                            $OBInstW32Properties = @{'pscomputername'=$Global:PC;
+                                'Name'=($InstW32Line.Name);
+                                'Version'=($InstW32Line.Version);
+                                'Date'=$CDAte;
+                                'WMIError' = $W32Error}
+                        New-Object -TypeName PSObject -Prop $OBInstW32Properties 
+                        $W32Error = $null
+                        $InstW32 = $null
+                        $InstW32Line = $null
+                    }
+                }
+                Else
+                {
+                    $OBInstW32Properties = @{'pscomputername'=$Global:PC;
+                        'Name'= "NONE";
+                        'Version'="N/A";
+                        'Date'=$CDAte;
+                        'WMIError' = "$prglist not found"}
                     New-Object -TypeName PSObject -Prop $OBInstW32Properties 
                     $W32Error = $null
-                    $InstW32Line = $null
                 }
             }
             Else
