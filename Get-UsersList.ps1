@@ -62,7 +62,7 @@ if ($ADorCSL -eq "AD")
         # Get the list from users listed in Active Directory
         # $Global:userlist = Get-ADUser -Filter 'Enabled -eq "True"'
         # Filter out AD for Enabled systems in the Domain users and Domain Controllers OUs
-        $Global:userlist = Get-ADUser -Filter '(Enabled -eq "True") -AND (mail -notlike "healthmailbox*")' -Properties *|select SamAccountName,Enabled,Name,DistinguishedName
+        $Global:userlist = get-aduser -Filter '(Enabled -eq "True")' -Properties *|where {$_.mail -notlike "healthmailbox*"} # |select SamAccountName,Enabled,Name,DistinguishedName,UserPrincipalName
     }
 elseif ($ADorCSL -eq "C")
     {
