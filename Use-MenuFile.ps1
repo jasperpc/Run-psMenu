@@ -53,7 +53,7 @@ Function chFCcolor($Script:Fp1,$Script:Fp2,$Script:Fp3,$Script:FNC){
 # (Get-ADUser -filter 'SamAccountName -like $ADUser1' -Properties * |Select-Object -property @{n="ADUserInfo";e={$_.SamAccountName,$_.memberof}}|select -ExpandProperty ADUserInfo)
 Function FileMenu()
 {
-    while ($FileMenuSelect -lt 1 -or $FileMenuSelect -gt 32)
+    while ($FileMenuSelect -lt 1 -or $FileMenuSelect -gt 11)
     {
         Trap {"Error: $_"; Break;}        
         $FMNum = 0;Clear-host |out-null
@@ -93,12 +93,26 @@ Function FileMenu()
             $Script:Fp2 = "hash ";
             $Script:Fp3 = "of a file"
             $Script:FNC = "Yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
+# Get information about the Authenticode signature for files.
+        $FMNum ++;$get_AuthCdSig=$FMNum;
+            $Script:Fp1 = " $FMNum. `tGet information about the ";
+            $Script:Fp2 = "Authenticode signature ";
+            $Script:Fp3 = " for files."
+            $Script:FNC = "Yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
 # Get a list of Files Modified in the last xx days
         $FMNum ++;$Get_ModifiedFileList=$FMNum;
             $Script:Fp1 = " $FMNum. `tGet a ";
             $Script:Fp2 = "list of Files Modified ";
             $Script:Fp3 = "in the last xx days"
             $Script:FNC = "Yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
+# NTFS Folder Permissions - View NTFS permissions and folder ownership.
+            $FMNum ++;
+            $View_NTFSPermissions=$FMNum;
+            $Script:Fp1 = " $FMNum. `tView - ";
+            $Script:Fp2 = "NTFS Folder ";
+            $Script:Fp3 = "permissions and Ownership"
+            $Script:FNC = "Yellow";chFCcolor $Script:Fp1 $Script:Fp2 $Script:Fp3 $Script:FNC
+
 # NTFS Folder - Change Ownership and Add FullControl permissions then prompt to delete.
             $FMNum ++;
             $Manage_NTFS=$FMNum;
@@ -127,7 +141,9 @@ Function FileMenu()
         $get_OpenFiles{$FileMenuSelect=$null;get-OpenFiles;Reload-FileMenu}
         $Compare_Files{Compare-Files;Reload-PromptFileMenu}
         $run_get_filehash{run-get-filehash;Reload-PromptFileMenu}
+        $get_AuthCdSig{Clear-Host;get-AuthCdSig;Reload-PromptFileMenu}
         $Get_ModifiedFileList{Get-ModifiedFileList;Reload-PromptFileMenu}
+        $View_NTFSPermissions{Clear-Host;View-NTFSPermissions;Reload-PromptFileMenu}
         $Manage_NTFS{Clear-Host;Manage-NTFS;Reload-PromptFileMenu}
         $Browse_Share{Browse-Share;Reload-PromptFileMenu}
         
@@ -219,7 +235,7 @@ Function Manage-ADUserFiles()
         {
         $NamedFiles = Read-Host "Enter a file name to remove. Ex: SharedFiles (S).lnk or *"
         # Location of new file to copy
-        # Example: \\domain.local\dfs\Net Share\Folder
+        # Example: \\$env:USERDNSDOMAIN\dfs\Net Share\Folder
         # Folder where icons are pinned to the TaskBar
         #  ls "C:\Users\%username%\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
         $NAmedFNLocation = Read-Host "`nEnter the path to the new file to copy (exclude trailing \);
@@ -242,7 +258,12 @@ Function Manage-ADUserFiles()
             Write-Warning "Collect Function Results will be saved in: $OutFile"
         }
     $ADorCSL = $null
-    Get-PCList
+
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
         If (!$Global:pclist)
             {
                 $opt1 = $null
@@ -735,32 +756,38 @@ Function Replace-DesktopFiles()
             $fn = $cr.name 
             $rmfile = $PathToLink +"\"+$fn 
             # uncomment to delete the old file found first prior to copying its replacement.
-            del $rmfile # -Confirm
+            del $rmfile -Confirm
             # Export a list of all shortcuts marked for replacement
             $CSVName = ".\_"+$Global:CDate+"DesktopLinks.csv"
             $cr |Export-Csv $CSVName -NoTypeInformation -Append
         }
     }
     # copy $copyFile to new location on $desktop with destination filename: $ReplaceWithFN
-
-    Write-Warning "Copying $copyFile to $PathToLink\$ReplaceWithFN"
-    copy $copyFile "$PathToLink\$ReplaceWithFN" -ErrorAction Inquire -ErrorVariable ER # -ErrorAction SilentlyContinue 
-    # $cr = $error[0].exception.message
-    $CSVName = ".\_"+$Global:CDate+"DesktopLinks.csv"
-    # if ($cr -ne "")
-    Write-Warning "ER $ER"
-    if ($ER -ne "")
+    if ($copyFile -ne "\")
     {
-        $ER|Out-File $CSVName -Append -NoClobber
-        # Write-Output "Was trying to copy $copyFile to $PathToLink\$ReplaceWithFN" |Out-File $CSVName -Append -NoClobber
-        $ER = ""    
+        Write-Warning "Copying $copyFile to $PathToLink\$ReplaceWithFN"
+        copy $copyFile "$PathToLink\$ReplaceWithFN" -ErrorAction Inquire -ErrorVariable ER # -ErrorAction SilentlyContinue 
+        # $cr = $error[0].exception.message
+        $CSVName = ".\_"+$Global:CDate+"DesktopLinks.csv"
+        # if ($cr -ne "")
+        Write-Warning "ER $ER"
+        if ($ER -ne "")
+        {
+            $ER|Out-File $CSVName -Append -NoClobber
+            # Write-Output "Was trying to copy $copyFile to $PathToLink\$ReplaceWithFN" |Out-File $CSVName -Append -NoClobber
+            $ER = ""    
+        }
+        Else
+        {
+            Write-Output "Copied $copyFile to $PathToLink\$ReplaceWithFN" |Out-File $CSVName -Append -NoClobber
+        }
+        Write-host "$CSVName" -ForegroundColor Green
     }
     Else
     {
-        Write-Output "Copied $copyFile to $PathToLink\$ReplaceWithFN" |Out-File $CSVName -Append -NoClobber
+        Write-Output "File $copyFile not found. Not copied to $PathToLink\$ReplaceWithFN" |Out-File $CSVName -Append -NoClobber
     }
     Write-host "$CSVName" -ForegroundColor Green
-
 
 }
 
@@ -832,9 +859,9 @@ Function Get-ModifiedFileList()
         $DaySpan = Read-Host "Enter the number of days of modified files to list"
         # Set number of days to 100 years if nothing was entered
         If($DaySpan -eq ""){$DaySpan = "36500"}
-        $Dir2Scan = Read-Host "Hit [Enter] to scan \\FileServer\SharedFiles share on server or Enter an alternate path"
+        $Dir2Scan = Read-Host "Hit [Enter] to scan \\$env:USERDNSDOMAIN\dfs\SharedFiles share on server or Enter an alternate path"
     # Set a default Dir2Scan value if nothing was entered in the prompt
-        If($Dir2Scan -eq ""){$Dir2Scan = "\\FileServer\SharedFiles"}
+        If($Dir2Scan -eq ""){$Dir2Scan = "\\$env:USERDNSDOMAIN\dfs\SharedFiles"}
         $Ext2Scan = Read-Host "`nType an extension to restrict search"
         $FFilter = Read-Host "`nEnter a file search filter if necessary"
     # Inform user of selections made
@@ -854,6 +881,33 @@ Function Get-ModifiedFileList()
     # Delete the CSV temp file when user exits out of menu
     # File will not be deleted if it is still open at this time
     Remove-Item $ExCSVFileName -Force
+}
+Function View-NTFSPermissions
+{
+Clear-Host
+if (($BasePath = Read-Host "Enter a path name: or [Enter] for the default search of: \\$env:USERDNSDOMAIN\dfs\Home") -eq "") {$BasePath = "\\$env:USERDNSDOMAIN\dfs\Home"}
+$BasePath
+if (($FolderName = Read-Host "Enter a direcotry name: or [Enter] for the default search of: Scans") -eq "") {$FolderName = "Scans"}
+$folderPath = Get-ChildItem -Directory -Path $BasePath -Recurse -Force -Depth 1 |where {$_.Name -eq $FolderName}
+$Output = @()
+    foreach ($folder in $folderPath)
+    {
+        $ACL = Get-Acl -Path $folder.FullName
+        $FOwn = Get-NTFSOwner $folder.FullName |select Owner
+        $Output += ForEach ($Access in $ACL.Access)
+        {
+            $Properties = [ordered]@{'Folder Name'=$Folder.FullName;
+            'Folder Owner'=$FOwn.Owner;
+            'Group/User'=$Access.IdentityReference;
+            'Permissions'=$Access.FileSystemRights;
+            'Inherited'=$Access.IsInherited}
+            New-Object -TypeName PSObject -Property $Properties
+        }
+    
+        # Get-NTFSOwner $folder
+        # (Get-Acl -Path $folder).Access
+    }
+$Output |Out-GridView -Title $FolderName
 }
 Function Manage-NTFS
 {
@@ -928,4 +982,16 @@ param(
     $DL |select PSDrive,CreationTime,FullName,LastAccessTime,Mode <#| Sort Mode -Descending -property @{E="FullName";Descending=$false} @{Expression="Mode";Descending=$true}|sort FullName #>|ft -AutoSize -Wrap # Root,Parent,PSChildName,
     Remove-PSDrive -Name "$NewDL"
     
+}
+Function get-AuthCdSig # Gets information about the Authenticode signature for files.
+{
+    Write-Warning "Get information about the Authenticode signature for files in the following directory:"
+    $CurrentWD = (pwd).path
+    if (($FileDirectory = Read-Host "Enter a direcotry path [Enter] to use default: $CurrentWD") -eq "") {$FileDirectory = $CurrentWD}
+    $FileList = ls $FileDirectory -Attributes !Directory #list only files not folders
+    foreach ($File in $FileList)
+    {
+        $FilePath = $FileDirectory + "\" +$File.name
+        Get-AuthenticodeSignature -filepath $FilePath |select IsOSBinary,Path,SignatureType,SignerCertificate,Status,StatusMessage,TimeStamperCertificate
+    }
 }
