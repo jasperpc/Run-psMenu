@@ -214,7 +214,7 @@ Function GroupsOfMembers()
 Function List-DomPCsLAPSPw()
 {
     Clear-Host
-    Get-PCList
+    if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList} #Get-PCList
     foreach ($Global:PCLine in $Global:PCList)
     {
         Identify-PCName
@@ -226,7 +226,7 @@ Function List-DomPCsLAPSPw()
 }
  Function SysEvents()
 { 
-    Get-PCList
+    if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList} #Get-PCList
     $WinLogName= Read-host "Enter Application, Security, Setup, or System"
     $EntryLevel_Type= Read-host " Enter Critical, Error, Warning, Information, FailureAudit, SuccessAudit"
     $MaxEvents = Read-host "How many log records do you want to search through?"
@@ -247,7 +247,7 @@ Function UsrOnPC ()
 {
 # Report the Username logged into any active computer listed in Active Directory
     Clear-Host
-    Get-PCList
+    if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList} #Get-PCList
     foreach ($Global:PCLine in $Global:PCList)
     {
         Identify-PCName
@@ -276,7 +276,7 @@ Function UsrsOnPCs()
 {
 # Report the IP Address, ComputerName and Username logged into any active computer listed in Active Directory
 Clear-Host
-Get-PCList
+if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList} #Get-PCList
 Write-Host "IPAddress `tMachine Name `tUser Logged on"
 foreach ($Global:PCLine in $Global:pcList)
 	{
@@ -492,7 +492,8 @@ If ($GADOPrompt -eq "Y")
 Function Decommission-ADPC
 {
     Clear-Host
-    Get-PCList
+    #Get-PCList
+    if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList}
     $Global:pclist|Get-ADComputer -Properties * |where {$_.enabled -eq $true} |select Name,Enabled,DistinguishedName,description |Out-GridView
     # change *Disable* in the filter if your naming convention is different or create an OU named Disabled, etc...
     $GADOUDisable = (Get-ADOrganizationalUnit -Filter * |where {$_.Name -like "*Disable*"}).DistinguishedName
