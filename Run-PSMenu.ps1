@@ -27,9 +27,6 @@
     To see more information, type: help Run-PSMenu.ps1 -detailed"
 .TODO
     Enable Script block logging
-    Create function to retrieve Windows Key from system:
-        "Get-WmiObject -Query "select * from SoftwareLicensingService" -ComputerName lec237,lec116,lec128 |select __server,OA3xOriginalProductKey"
-
 #>
 # See Getting Started with PowerShell 3.0 Jump Start in MS Virtual Academy for loading modules from other systems
 
@@ -58,7 +55,7 @@ $Script:NC = $null
 $Script:p1 = $null
 $Script:p2 = $null
 $Script:p3 = $null
-$CDate = Get-Date -UFormat "%Y%m%d"
+$Global:CDate = Get-Date -UFormat "%Y%m%d"
 $Global:CDateTime = [datetime]::ParseExact($Global:CDate,'yyyymmdd',$null)
 [int]$menuselect = 0
 
@@ -171,7 +168,7 @@ switch($menuselect)
         # 1{}
         $Exit{$MenuSelect=$null}
         $Get_Cred{Clear-Host;Get-Cred;$menuselect = $null;menu}
-        $List_PCList{Clear-Host;$Global:PCList;reload-PromptMenu}
+        $List_PCList{Clear-Host;"PCName";foreach ($Global:PCLIne in $Global:PCList){Identify-PCName;$Global:PC};reload-PromptMenu}
         $Use_MenuNet{. .\Use-MenuNet.ps1;NetMenu;reload-NoPromptMenu}
         $Use_MenuUserNGroup{. .\Use-MenuUserNGroup.ps1;UnGmenu;reload-NoPromptMenu}
         $Use_MenuPC{. .\Use-MenuPC.ps1;PCMenu;reload-NoPromptMenu}
