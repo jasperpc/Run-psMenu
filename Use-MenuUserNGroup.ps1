@@ -235,9 +235,10 @@ Function Associate-UserAndPC
     $UsrPCAssn = foreach ($line in $AUnPResult)
     {
         $LName = ($line.Name)
+        $LNameWild = ($line.Name) + "*"
         If ($ObClass1 -eq "User")
         {
-            $A1 = (get-adcomputer -Properties * -filter 'description -like $LName' -ErrorAction SilentlyContinue |Where {$_.enabled -eq $true}|select Name,Description -ErrorAction SilentlyContinue)
+            $A1 = (get-adcomputer -Properties * -filter 'description -like $LNameWild' -ErrorAction SilentlyContinue |Where {$_.enabled -eq $true}|select Name,Description -ErrorAction SilentlyContinue)
             $A1SAN = $A1.SamAccountName
             $A1Name = $A1.Name
             Write-Host "$A1Name`t" -NoNewline
@@ -246,7 +247,7 @@ Function Associate-UserAndPC
         }
         Elseif ($ObClass1 -eq "Computer")
         {
-            $A1 = (Get-aduser -Filter *  -ErrorAction SilentlyContinue |where {$_.Name -like $line.Description}|select SamAccountName,Name -ErrorAction SilentlyContinue)
+            $A1 = (Get-aduser -Filter *  -ErrorAction SilentlyContinue |where {$_.Name -like $line.Description}|select Name, SamAccountName -ErrorAction SilentlyContinue)
             $A1SAN = $A1.SamAccountName
             $A1Name = $A1.Name
             Write-Host "$Lname`t" -NoNewline
@@ -256,7 +257,7 @@ Function Associate-UserAndPC
             # "$LName `t $A1"
         }
     }
-    $UsrPCAssn |ft -autosize
+    $UsrPCAssn|ft -autosize # Name, SamAccountName 
     $AUnP=$null
 }
 Function Get-GroupMembership() # Include PC Name where User name is listed in PC obj Description
@@ -339,7 +340,7 @@ Function Find-UserPCs
     [string[]] $Names = ((Read-Host "Enter a comma separated list of all or part of People's first or last names").split(",") | %{$_.trim()})
     foreach ($LName in $Names) 
     {
-        get-adcomputer -Filter * -Properties *|where {$_.enabled -eq $true -and $_.Description -like "*$LName*"}|ft Description,Name -autosize -wrap
+        get-adcomputer -Filter * -Properties *|where {$_.enabled -eq $true -and $_.Description -like "*$LName*"}|ft Name, Description -autosize -wrap
     }
 }
 Function Find-PCsUser
@@ -348,6 +349,7 @@ Function Find-PCsUser
     # this will list the User and the associated computer
     # Use this format for the Computer Object Description: "First Last, Optional Extended Description"
     Clear-Host
+    $Global:PCLocation = $null
     # Use the following if we want to retain a single PCList across many menu functions 
     if ($Global:PCList -eq $null)
     {
@@ -357,16 +359,18 @@ Function Find-PCsUser
     {
         Identify-PCName
         $PCDescription = (Get-ADComputer $Global:PC -Properties * |select Description).Description
+        if ($Global:PCLocation -eq $null){$Global:PCLocation = "Unk"}
         $PCDescLikeQuery = ($PCDescription.split(","))[0]
         $GADUserRslt = Get-ADUser -Filter * -Properties * |where {$_.Name -like $PCDescLikeQuery}|select SAMAccountName, Name, Mail, EmailAddress, Enabled
-        if ($GADUserRslt){
+if ($GADUserRslt){
         $PCsUserProperties = @{'SystemName'=$Global:PC;
                         'SamAccountName'=$GADUserRslt.SAMAccountName;
                         'Name'=$GADUserRslt.Name;
                         'Mail'=$GADUserRslt.Mail;
                         'Description'=$PCDescription;
                         'EmailAddress' = $GADUserRslt.EmailAddress;
-                        'Enabled' = $GADUserRslt.Enabled}
+                        'Enabled' = $GADUserRslt.Enabled
+                        'Location' = $Global:PCLocation}
         }
         Else{
         $PCsUserProperties = @{'SystemName'=$Global:PC;
@@ -375,7 +379,8 @@ Function Find-PCsUser
                 'Mail'=$GADUserRslt.Mail;
                 'Description'=$PCDescription;
                 'EmailAddress' = $GADUserRslt.EmailAddress;
-                'Enabled' = $GADUserRslt.Enabled}
+                'Enabled' = $GADUserRslt.Enabled
+                'Location' = $Global:PCLocation}
         }
         New-Object -TypeName PSObject -Prop $PCsUserProperties
     $PCDescription = $null
@@ -390,12 +395,13 @@ Function Find-UsrsOnPCs()
 {
 # Report the IP Address, ComputerName and Username logged into any active computer listed in Active Directory
 Clear-Host
+$Global:PCLocation = $null
 # Use the following if we want to retain a single PCList across many menu functions 
     if ($Global:PCList -eq $null)
     {
         Get-PCList
     }
-Write-Host "IPAddress `tMachine Name `tUser Logged on"
+Write-Host "Machine Name `tIPAddress `tUser Logged on `tStatus"
 foreach ($Global:PCLine in $Global:pcList)
 	{
     Identify-PCName
@@ -406,6 +412,7 @@ foreach ($Global:PCLine in $Global:pcList)
     $CompIP = ([system.net.dns]::GetHostAddresses($Global:pc)).IPAddressToString
     If ($CompIP)
         {
+            $Stat = "Ping Failed"
             $ping = test-connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue
             # Verify Computername, hostname, with IP
             $CompName = [System.Net.Dns]::GetHostByAddress($CompIP).HostName
@@ -418,6 +425,7 @@ foreach ($Global:PCLine in $Global:pcList)
     Else{
             $ping = $false
             $CompIP = "   .   .   .   "
+            $Stat = "No Entry in DNS"
         }
     if($ping -eq $true)
         {
@@ -427,21 +435,25 @@ foreach ($Global:PCLine in $Global:pcList)
 		    #Search collection of processes for process owner username
             if ($proc -ne $null)
             {
+                $Stat = "is logged in."
 		        ForEach ($p in $proc) {
                     $pscn = $p.pscomputername
                     $pgo = $p.GetOwner().user
-                    Write-Host "$pscn :`t$CompIP`t$pgo`tis logged in." -ForegroundColor Green
-           
-		        }
+                    Write-Host "$pscn :`t$CompIP`t$pgo`t$Stat`t$Global:PCLocation" -ForegroundColor Green
+                }
+                $proc = $null
             }
             else
             {
-                Write-host "$Global:PC :`tUnable to get process" -ForegroundColor Red # $script:computer
+                $Stat = "gwmi unable to get process."
+                Write-Host "$Global:PC :`t$CompIP`tUNK`t$Stat`t$Global:PCLocation" -ForegroundColor Yellow
+                # Write-host "$Global:PC :`tUnable to get process" -ForegroundColor Red # $script:computer
             }
         }
         else
         {
-            Write-Host "$Global:pc :`t$CompIP`tUNK`tNONE" -ForegroundColor Red
+            Write-Host "$Global:pc :`t$CompIP`tUNK`t$Stat`t$Global:PCLocation" -ForegroundColor Red
+            
         }
     }
     $ErrorActionPreference = "continue"
