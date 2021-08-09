@@ -14,6 +14,8 @@
 .REMARKS
     To see the examples, type: help Manage-ADUsers.ps1 -examples
     To see more information, type: type: help Manage-ADUsers.ps1 -detailed
+.TODO
+    get-adobject -filter 'objectClass -eq "contact"' -properties * |select Name,Mail,TargetAddress
 #>
 # Enable AD and PS Update modules
 Import-Module ActiveDirectory
@@ -34,7 +36,7 @@ Clear-Host
 # Prepare for menu
 [BOOLEAN]$Global:ExitSession=$false
 $Script:t4 = "`t`t`t`t"
-$Script:d4 = "-------------------------------------------------------------------------------"
+$Script:d4 = "--------------------------- Manage-ADUsers.ps1 ---------------------------------"
 $Script:NC = $null
 $Script:p1 = $null
 $Script:p2 = $null
@@ -54,7 +56,7 @@ $MADUmenuArray = @($Exit," $MMADUNum. ","Exit to Main Menu"," ","Red"), #@(Switc
                 @($GCred," $MMADUNum.  Enter ","Credentials ","for use in script.","Cyan"),
                 @($FWStatus," $MMADUNum.  Add/Create ","New User ","wizard","yellow"),
                 @($ListChangePW," $MMADUNum.  List PW info or force a User to ","change password ","on his/her AD account","yellow"),
-                @($adUserPW," $MMADUNum. `tUnlock, Reset, or Change","the password ","on a user's PC","yellow"),
+                @($adUserPW," $MMADUNum. `tUnlock, or Reset ","the password ","on a user's PC","yellow"),
                 @($Disable_ADUser," $MMADUNum. `tMove user(s) to the disabled OU and ","Disable User(s) "," ","yellow")
     
 function MADUmenu()
@@ -82,7 +84,7 @@ while ($MADUmenuselect -lt 1 -or $MADUmenuselect -gt 7)
         $MMADUNum ++;$FWStatus=$MMADUNum;$p1 =" $MMADUNum.  Add/Create ";
             $p2 = "New User ";$p3 = "wizard"; $NC = "yellow";chcolor $p1 $p2 $p3 $NC
         # Unlock, Reset, or Change a user's password
-        $MMADUNum ++;$adUserPW = $MMADUNum;$p1 =" $MMADUNum. `tUnlock, Reset, or Change";
+        $MMADUNum ++;$adUserPW = $MMADUNum;$p1 =" $MMADUNum. `tUnlock or Reset ";
 		    $p2 = "the password ";$p3 = "on a user's PC"; $NC = "yellow";chcolor $p1 $p2 $p3 $NC
 # Disable selected ADUser(s) and move objects to a new AD container (default is the Disabled container)
                 $MMADUNum ++;$Disable_ADUser = $UnGMNum;$p1 =" $MMADUNum.`tMove and ";
@@ -185,12 +187,12 @@ function Create-NewADUser()
     $NAUCMD
     New-ADUser (($NAUCMD).ToString()) -Confirm
 }
-# Force a user to change his/her AD Password
+# List PW Info or force a user to change his/her AD Password
 function Force-NewADPassword()
 {
     $ObjectRslt=$null
     $GAD=$null
-    Get-UserList
+    Get-UserList # function loaded in . .\Get-UsersList.ps1
     Write-Warning "`nIf changes are enabled, this function will allow password to expire and force a password change at logon.`n"
     $Action = Read-Host "Type L to List, P to Preview changes, or S to set changes" # "List or Set"
     # Determine Less than portion of the between dates query
@@ -204,7 +206,7 @@ function Force-NewADPassword()
     if (($GT_PWLastSetDate = Read-Host "Enter date for greater than PW last set date in the format yyyy/MM/dd [Enter] to use current default: 2001/07/29") -eq "") {$GT_PWLastSetDate = "2001/07/29"}
     $GT_PWLastSetDateTime = [datetime]::ParseExact($GT_PWLastSetDate,'yyyy/MM/dd',$null)
     Write-output "Searching for PasswordLastSet greater than $GT_PWLastSetDate but less than $LT_PWLastSetDate"
-    $GLULC = $Global:UserList.Count
+    $GLULC = $Global:UserList.Count # $Global:UserList set in "Get-UserList" from . .\Get-UsersList.ps1
     "Searching for $GLULC users"
     $ObjectRslt = foreach ($UserLine in $Global:UserList)
     {
@@ -257,7 +259,7 @@ function Reset-ADUserPW()
 {
     Clear-Host
     Write-host "Note that the Change option will provide a list of users and dates their passwords were last set (with or without options)"
-    $Choice = Read-Host "Enter List, Unlock, Reset, Change`nReset and Change accomplish the same thing slightly differently "
+    $Choice = Read-Host "Enter List, Unlock, or Reset" # , Change`nReset and Change accomplish the same thing slightly differently 
     
     if ($Choice -eq "Unlock")
     {
@@ -275,6 +277,7 @@ function Reset-ADUserPW()
     }    
 # Need to verify this option
 # This is like Set-Pwd function in Set-ADUserPwd.ps1 which can be iterated to in the change choice, but this is much quicker
+    <#
     Elseif ($Choice -eq "Change")
     {
         $ADUser = Read-Host "Enter part of the user's name "
@@ -286,17 +289,13 @@ function Reset-ADUserPW()
         if ($NewCred -eq $ConfirmNewCred)
         {
             $ADUserSAM |Set-ADAccountPassword -NewPassword $newCred -confirm -Reset
-            <#
-              You must set the OldPassword and the NewPassword parameters to set the password unless you specify the Reset parameter. 
-              When you specify the Reset parameter, the password is set to the NewPassword value that you provide and the OldPassword 
-              parameter is not required.
-            #>
         }
         Else
         {
             Write-Warning "The two passwords do not match"
         }
     }
+    #>
     Elseif ($Choice -eq "List")
     {
         $SearchBase = "DC=lec,DC=lan" # Previously included "CN=Users," in the SearchBase
@@ -340,10 +339,36 @@ Function get-aduserlist()
     $SearchText = $null
     # $ADUserList = get-aduser -Filter * |Select-Object SamAccountName, Name # |Export-Csv 20151015ADUsers.csv
     if(($SearchText = Read-Host "Enter search criteria for all or part of the samaccountname using * as wildcard [ENTER] for all") -eq ""){$SearchText = "*"}
-    $Fltr = "samaccountname -like `"$SearchText`""
-    $ADUL = get-aduser -Filter $Fltr -Properties *|where {$_.enabled -eq "true"} |Select-Object SamAccountName, Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName
+    # $Fltr = "samaccountname -like `"$SearchText`""
+    # 
+    # -and SamAccountName -like "$SearchText"
+    #  -and CN -like "$SearchText"
+    # (objectClass -eq "contact" -or objectClass -eq "User")
+    get-adobject -filter '*' -Properties * |Where {$_.objectClass -eq "Contact" -or $_.objectClass -eq "User"} |Where {$_.mail -and $_.name -like "$SearchText" -and $_.name -notlike "*Mailbox*" -and $_.Enabled -ne "Disabled"}|Select-Object Name,SamAccountName,Mail,TargetAddress,DistinguishedName,objectclass |ft -AutoSize -Wrap
+
+    #, Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName,TargetAddress, ObjectClass
+
+    # $ADUL = get-aduser -Filter $Fltr -Properties *|where {$_.enabled -eq "true"} |Select-Object SamAccountName, Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName
+    # $ADContacts = get-adobject -filter 'objectClass -eq "contact" -and Name -like $fltr' -properties * |select Name,Mail,TargetAddress
     Start-Sleep 1
-    $ADUL|Select SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName |Out-GridView 
+    # $ADUL|Select SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName |Out-GridView  -Title "LEC IT Users"
+    # $ADContacts |select Name,Mail,TargetAddress |Out-GridView -Title "LEC Eng Contacts"
     # $ADUL|ft SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address -AutoSize -Wrap
 }
+<#
+Function get-aduserlist()
+{
+    Clear-Host
+    $SearchText = $null
+    # $ADUserList = get-aduser -Filter * |Select-Object SamAccountName, Name # |Export-Csv 20151015ADUsers.csv
+    if(($SearchText = Read-Host "Enter search criteria for all or part of the samaccountname using * as wildcard [ENTER] for all") -eq ""){$SearchText = "*"}
+    $Fltr = "samaccountname -like `"$SearchText`""
+    $ADUL = get-aduser -Filter $Fltr -Properties *|where {$_.enabled -eq "true"} |Select-Object SamAccountName, Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName
+    $ADContacts = get-adobject -filter 'objectClass -eq "contact" -and Name -like $fltr' -properties * |select Name,Mail,TargetAddress
+    Start-Sleep 1
+    $ADUL|Select SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address,UserPrincipalName |Out-GridView  -Title "LEC IT Users"
+    $ADContacts |select Name,Mail,TargetAddress |Out-GridView -Title "LEC Eng Contacts"
+    # $ADUL|ft SamAccountName,Name,CanonicalName,LastLogonDate,Created,mail,address -AutoSize -Wrap
+}
+#>
 MADUmenu
