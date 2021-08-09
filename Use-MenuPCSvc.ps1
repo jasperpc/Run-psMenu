@@ -41,7 +41,7 @@ function chPCScolor($Script:PCS1,$Script:PCS2,$Script:PCS3,$Script:PCSNC)
 }
 function PCSvcMenu()
 {
-while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 8)
+while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 9)
     {
         Clear-Host
         Trap {"Error: $_"; Break;}        
@@ -94,6 +94,12 @@ while ($PCSvcMenuSelect -lt 1 -or $PCSvcMenuSelect -gt 8)
             $p2 = "Service";
             $p3 = " on selected system";
             $NC = "Yellow";chPCScolor $Script:PCSp1 $p2 $p3 $NC
+# Change Service Type and Status 
+        $Script:PCSMNUM ++;$Set_SelectSvc=$Script:PCSMNUM;
+            $Script:PCSp1 = " $Script:PCSMNUM. `t Set Service ";
+            $p2 = "StartupType and Status";
+            $p3 = " on selected system";
+            $NC = "Yellow";chPCScolor $Script:PCSp1 $p2 $p3 $NC
         # Setting up the menu in this way allows you to move menu items around and have the numbering change automatically
         # It also allows you to put a word in the middle of the line and have it change color to be easier to see
         # $PCIMNum ++;$Script:PCI1 =" $PCIMNum.  FIRST";$Script:PCI2 = "HIGHLIGHTED ";$Script:PCI3 = "END"; $Script:PCINC = "yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
@@ -111,6 +117,7 @@ switch($PCSvcMenuSelect)
         $Get_Set_ncp{Clear-Host;Get-Set-ncp;Reload-PCSvcMenu}
         $Restart_SelectSvc{Clear-Host;Restart-SelectSvc;Reload-PromptPCSvcMenu}
         $Query_SelectSvc{Clear-Host;Query-SelectSvc;Reload-PromptPCSvcMenu}
+        $Set_SelectSvc{Clear-Host;Set-SelectSvc;Reload-PromptPCSvcMenu}
 default
         {
             # cls
@@ -199,6 +206,29 @@ Function Get-Svc()
         $gsout = $null
     }
     
+}
+# function Change-SvcStartType is in progress - not usable yet
+function Change-SvcStartType
+{
+    
+    # Get-PCList
+    $Global:pc = "pcname"
+    $SvcName = "spooler" # Read-Host "Enter part of the service name (Ex: CRCPluginServer)"
+    
+    # foreach ($Global:PCLine in $Global:PCList){Identify-PCName;get-service remoteregistry -ComputerName $Global:PC |select MachineName,Status,StartType}
+    # TO-Do: Move the action against the service into a different function and use this function just to list services with MachineName,Status, and StartType
+    # foreach($Global:pcLine in $Global:PCList)
+    # {
+        # Identify-PCName
+        $WMIServ = Get-WmiObject win32_service -ComputerName $Global:PC -Credential $cred |select pscomputername,processid,name,state,pathname|Where-Object {$_.Name -like "*$SvcName*"}
+        $WMIServ|ft -autosize -wrap
+        $gsout = Get-Service -name $svcName -ComputerName $Global:PC |select *
+        $gsout |select ServiceName,StartType,Status
+        if ($gsout.StartType -ne "Disabled") 
+        {
+            $gsout |Set-Service -StartupType Disabled -Confirm |Out-Null
+        }
+    # }
 }
 Function Get-ServiceLogons
 {
@@ -372,7 +402,6 @@ The firewall on the default public location is much more restrictive
     $SvcObjResult |FT
 }
 
-Query-SelectSvc
 Function Query-SelectSvc()
 {
 $SvcPrompt = $null
@@ -390,17 +419,22 @@ The firewall on the default public location is much more restrictive
     $Global:PCCnt = ($Global:PCList).Count
     if ($Global:PCCnt -gt 1)
     {
-        $SvcPrompt =Read-Host "You have $Global:PCCnt systems selected. Type Y to view the NLASvc on all systems"
+        $SvcPrompt =Read-Host "You have $Global:PCCnt systems selected. Type Y to view the $ServiceNamePrompt service on all systems"
     }
     else{$SvcPrompt = "Y"}
     if ($SvcPrompt -eq "Y")
     { 
+        $SvcObjResult = ""
         $SvcObjResult = foreach($Global:pcLine in $Global:PCList)
         {
             Identify-PCName # Called from Run-PSMenu.ps1
-            If (Test-Connection $Global:pc -Count 1 -Quiet)
+            $TC = Test-connection $Global:PC -Count 1 -ErrorAction SilentlyContinue -ErrorVariable TCError 
+            if ($TC.StatusCode -eq 0)
             {
-                $getSvc = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
+                Write-host "." -NoNewline -ForegroundColor Green
+                $getSvcs = Get-Service $ServiceNamePrompt -ComputerName $Global:PC |Select MachineName,Name,Status,StartType 
+                $SvcObjResult = foreach ($getSvc in $GetSvcs)
+                {
                 # $getSvc |FT
                 <#
                 If ($getSvc.Status -eq "Stopped")
@@ -414,18 +448,73 @@ The firewall on the default public location is much more restrictive
                     }
                 }
                 #>
-                New-Object PSObject -Property @{
-                    pscomputername = $Global:PC;
-                    MachineName = $getSvc.MachineName;
-                    Name = $getSvc.Name;
-                    Status = $getSvc.Status;
-                    StartType  = $getSvc.StartType
-                    }
+                $GSMachineName = $getSvc.MachineName
+                $GSName = $getSvc.Name
+                $GSStatus = $getSvc.Status
+                $GStartType = $getSvc.StartType
+                $SvcObProperties = @{'pscomputername'="$Global:PC";
+                    'Name' = "$GSName";
+                    'Status' = "$GSStatus";
+                    'StartType'  = "$GStartType"}
+                New-Object -TypeName PSObject -Prop $SvcObProperties
+                }
             }
-            $SvcObjResult += $SvcObjResult
         }
+        $SvcObjResult |select * |FT
     }
     else
     {Write-Warning "You may use the menu to select only a single system if you wish"}
-    $SvcObjResult |FT
+}
+Function Set-SelectSvc()
+{
+Clear-Host
+$SvcPrompt = $null
+if (($ServiceNamePrompt = Read-Host "Enter a service name or [Enter] to use default: Spooler") -eq "") {$ServiceNamePrompt = "Spooler"}
+if (($ServiceStartupType = Read-Host "Enter a service StartupType like Disabled, Automatic, or Manual, or [Enter] to use default: Disabled") -eq "") {$ServiceStartupType = "Disabled"}
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $Global:PCCnt = ($Global:PCList).Count
+    if ($Global:PCCnt -gt 1)
+    {
+        $SvcPrompt =Read-Host "You have $Global:PCCnt systems selected. Type Y to view or modify StartType and Status for the $ServiceNamePrompt service on all systems"
+    }
+    else{$SvcPrompt = "Y"}
+    if ($SvcPrompt -eq "Y")
+    { 
+        $Global:PCListNames = $Global:PCList.name
+        $SvcObjResult = ""
+        $SvcObjResult = foreach($Global:pcLine in $Global:PCList)
+        {
+            Identify-PCName # Called from Run-PSMenu.ps1
+            $TC = Test-connection $Global:PC -Count 1 -ErrorAction SilentlyContinue -ErrorVariable TCError 
+            if ($TC.StatusCode -eq 0)
+            {
+                Write-host "." -NoNewline -ForegroundColor Green
+                # $getSvcs = Get-Service $ServiceNamePrompt -ComputerName $Global:PC # |Select MachineName,Name,Status,StartType 
+                $getSvcs = get-service -Name $ServiceNamePrompt -ComputerName $Global:PC
+                $SvcObjResult = foreach ($getSvc in $GetSvcs)
+                {
+                    if ($getSvc.StartType -ne "Disabled")
+                    {
+                        Write-Warning "Changing Service `'$ServiceNamePrompt`' on $Global:PC to StartupType $ServiceStartupType"
+                        Set-Service -InputObject $getSvc -StartupType Disabled -Confirm
+                    }
+                    else
+                    {
+                        Write-Warning "The StartupType for Service `'$ServiceNamePrompt`' on $Global:PC is set to $ServiceStartupType"
+                    }
+                    if ($getSvc.Status -ne "Stopped")
+                    {
+                        Write-Warning "Changing Service `'$ServiceNamePrompt`' on $Global:PC to Stopped"
+                        get-service -Name $ServiceNamePrompt -ComputerName $Global:PC |Stop-Service -Confirm
+                    }
+                # $Global:PC = $PC.Name
+                get-service -Name $ServiceNamePrompt -ComputerName $Global:PCListNames |select MachineName, Name, StartType, Status|ft -AutoSize
+                }
+            }
+        }
+    }
 }
