@@ -24,8 +24,12 @@ $properties=@()
 $tasks=@()
 $ps=$null
 $script:data=$null
-. .\Get-SystemsList.ps1 # load functions in .ps1
-Get-PCList
+# Use the following if we want to retain a single PCList across many menu functions 
+if ($Global:PCList -eq $null)
+{
+    . .\Get-SystemsList.ps1 # load functions in .ps1
+    Get-PCList
+}
 # Prompt for Result filtering specifics
 # $Global:PC=Read-Host "`nEnter the name of a system to diagnose"
 $ForeignIP = Read-Host "`nEnter all or start of the foreign IP address to limit results on foreign IP"
