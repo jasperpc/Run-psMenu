@@ -44,7 +44,7 @@ if ($ADorCSL -eq "AD")
         # $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"' # (use this line if you don't care what OU the systems are in)
         # Filter out AD for Enabled systems in the Domain Computers and Domain Controllers OUs
         # Add more properties or * if you need more returned with the query
-        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'-Properties * |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*" <# -and $_.Name -like "LEC104"#>} |sort-object Name # Enabled,Name,IPv4Address,DistinguishedName,Location
+        $Global:PCList = Get-ADComputer -Filter 'Enabled -eq "True"'-Properties * |where {$_.DistinguishedName -like "*Domain Computers*" -or $_.DistinguishedName -like "*Domain Controllers*" } |sort-object Name # Enabled,Name,IPv4Address,DistinguishedName,Location
         $Global:PCLocation = $Global:PCList.Location
     }
 elseif ($ADorCSL -eq "C")
