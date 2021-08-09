@@ -49,7 +49,7 @@ Function chPCIcolor($Script:PCI1,$Script:PCI2,$Script:PCI3,$Script:PCINC){
 
 Function PCIMenu()
 {
-    while ($PCIMenuselect -lt 1 -or $PCIMenuselect -gt 12)
+    while ($PCIMenuselect -lt 1 -or $PCIMenuselect -gt 16)
     {
         Trap {"Error: $_"; Break;}        
         $PCIMNum = 0;Clear-host |out-null
@@ -111,12 +111,36 @@ Function PCIMenu()
             $Script:PCI2 = "Network (NIC)  ";
             $Script:PCI3 = "Information"
             $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
+    # Monitor Information
+        $PCIMNum ++;$List_Monitors=$PCIMNum;
+            $Script:PCI1 = " $PCIMNum. `t View ";
+            $Script:PCI2 = "Monitor Information ";
+            $Script:PCI3 = "Information"
+            $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
+    # Screen Resolution Information
+        $PCIMNum ++;$List_Resolutions=$PCIMNum;
+            $Script:PCI1 = " $PCIMNum. `t View ";
+            $Script:PCI2 = "Screen Resolution ";
+            $Script:PCI3 = "Information"
+            $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
     #    Write-Output "$Script:PCIt4  5. View Non-Domain PC Information and Service Tag"
+    # View PC Windows Product key
+        $PCIMNum ++;$Get_WinProdKey=$PCIMNum;
+            $Script:PCI1 = " $PCIMNum. `t View ";
+            $Script:PCI2 = "Windows Product key ";
+            $Script:PCI3 = "for selected systems."
+            $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
     # View Non-Domain PC Information and Service Tag
         $PCIMNum ++;$Get_NonDomPCinfo=$PCIMNum;
             $Script:PCI1 = " $PCIMNum. `t View ";
             $Script:PCI2 = "non-domain PC Service Tag *** Fix non-dom cred prompts ***";
             $Script:PCI3 = "and generic pc information"
+            $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
+    # View System Logon Information
+        $PCIMNum ++;$Get_ADPCLogonInfo=$PCIMNum;
+            $Script:PCI1 = " $PCIMNum. `t View ";
+            $Script:PCI2 = "AD Logon ";
+            $Script:PCI3 = "Information for select systems"
             $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
     #    "Discover boot times (from select systems)"
         $PCIMNum ++;$BootTimes=$PCIMNum;
@@ -136,14 +160,18 @@ switch($PCIMenuselect)
         $PCMExit{$PCIMenuselect=$null;reload-PCmenu}
         $GCred{Clear-Host;Get-Cred;$PCIMenuselect = $null;Reload-PCInfoMenu} # Called from Run-PSMenu.ps1
         $Get_PCList{Clear-Host;Get-PCList;Reload-PCInfoMenu}
-        $Get_pcinfo{Clear-Host;Get-DInfo;Get-MemInfo;Get-CPUInfo;Get-BIOSSerialNumber;. ./Use-MenuNet.ps1;Call-Get-NICStatus;Get-ArchOSInfo;Reload-PromptPCInfoMenu}
+        $Get_pcinfo{Clear-Host;Get-DInfo;Get-MemInfo;Get-CPUInfo;Get-BIOSSerialNumber;. ./Use-MenuNet.ps1;Call-Get-NICStatus;Get-ArchOSInfo;List-Resolutions;List-Monitors;Reload-PromptPCInfoMenu}
         $Get_BIOSSerialNumber{Clear-Host; Get-BIOSSerialNumber;Reload-PromptPCInfoMenu}
         $Get_ArchOSInfo{Clear-Host; Get-ArchOSInfo;Reload-PromptPCInfoMenu}
         $Get_CPUInfo{Clear-Host; Get-CPUInfo;Reload-PromptPCInfoMenu}
         $Get_MemInfo{Clear-Host; Get-MemInfo;Reload-PromptPCInfoMenu}
         $Get_DiskInfo{Clear-Host; Get-DInfo;Reload-PromptPCInfoMenu}
         $Get_NICStatus{Clear-Host;$Global:NICSCMD;$Get_AllPCInfo = "NICS";. ./Use-MenuNet.ps1;Call-Get-NICStatus;Reload-PromptPCInfoMenu}
+        $List_Monitors{Clear-Host;List-Monitors;Reload-PromptPCInfoMenu}
+        $List_Resolutions{Clear-Host;List-Resolutions;Reload-PromptPCInfoMenu}
+        $Get_WinProdKey{Clear-Host;Get-WinProdKey;Reload-PromptPCInfoMenu}
         $Get_NonDomPCinfo{Clear-Host;Get-NonDomPCinfo;Reload-PCInfoMenu}
+        $Get_ADPCLogonInfo{Clear-Host;Get-ADPCLogonInfo;Reload-PromptPCInfoMenu}
         $BootTimes{Clear-Host;.\Start-MultiThreads.ps1 .\Get-BootTime.ps1;Reload-PromptPCInfoMenu} # Called Externally
         default
         {
@@ -357,17 +385,18 @@ Function Get-DInfo
 $DIObjOut = @()
 $DIObj = @()
 $DiskInfo = @()
-Write-Host "`nRunning: get-wmiobject win32_logicaldisk -Credential $cred -Computername $Global:PC | fl  systemname, Name, deviceid, description, Drivetype, mediatype, filesystem, @{n=`'MB freespace`';e={[string]::Format(`"{0:0,000} MB`",$_.FreeSpace/1MB)}},@{n=`'MB Size`';e={[string]::Format(`"{0:0,000} MB`",$_.Size/1MB)}}, volumedirty, volumename, volumeserialnumber"
+Write-Host "`nRunning: get-wmiobject win32_logicaldisk -Credential $cred -Computername $Global:PC | select systemname, Name, deviceid, description, Drivetype, mediatype, filesystem, @{n=`'MBfreespace`';e={[string]::Format(`"{0,8:#,##0.0} GB`",[math]::Round($_.FreeSpace/1GB,2))}}, @{n=`'MBSize`';e={[string]::Format(`"{0,8:#,##0.0} GB`",[math]::Round($_.Size/1GB))}}, volumedirty, volumename, volumeserialnumber"
     foreach($Global:pcLine in $Global:pclist)
     {
         Write-host "$Global:PC, " -NoNewline -ForegroundColor Green
         Identify-PCName
         If (Test-Connection $Global:pc -Count 1 -Quiet)
         {
-            $DiskInfo = get-wmiobject win32_logicaldisk -Credential $cred -Computername $Global:PC | select systemname, Name, deviceid, description, Drivetype, mediatype, filesystem, @{n='MBfreespace';e={[string]::Format("{0:0,000} MB",$_.FreeSpace/1MB)}}, @{n='MBSize';e={[string]::Format("{0:0,000} MB",$_.Size/1MB)}}, volumedirty, volumename, volumeserialnumber
+            $DiskInfo = get-wmiobject win32_logicaldisk -Credential $cred -Computername $Global:PC | select systemname, Name, deviceid, description, Drivetype, mediatype, filesystem, @{n='MBfreespace';e={[string]::Format("{0,8:#,##0.0} GB",[math]::Round($_.FreeSpace/1GB,2))}}, @{n='MBSize';e={[string]::Format("{0,8:#,##0.0} GB",[math]::Round($_.Size/1GB))}}, volumedirty, volumename, volumeserialnumber
             $DIObj = @()            
             $DIObj = foreach($DILine in $DiskInfo)
             {
+                if ($DILine.MBSize -eq "0.0 GB" -and $DILine.MBfreespace -eq "0.0 GB"){$DILine.MBSize = "-";$DILine.MBfreespace = "-"}
                 $DIObjProperties = @{
                     pscomputername = $Global:PC;
                     Name = $DILine.Name;
@@ -376,7 +405,8 @@ Write-Host "`nRunning: get-wmiobject win32_logicaldisk -Credential $cred -Comput
                     Drivetype = $DILine.Drivetype;
                     mediatype = $DILine.mediatype;
                     filesystem = $DILine.filesystem;
-                    MBfreespaceMBSize = $DILine.MBfreespaceMBSize;
+                    MBfreespace = $DILine.MBfreespace;
+                    MBSize = $DILine.MBSize;
                     volumedirty = $DILine.volumedirty;
                     volumename = $DILine.volumename;
                     volumeserialnumber = $DILine.volumeserialnumber
@@ -390,5 +420,162 @@ Write-Host "`nRunning: get-wmiobject win32_logicaldisk -Credential $cred -Comput
         }
     $DIObjOut += $DIObj
     }
-$DIObjOut |sort PSComputerName| Select pscomputername, Name, deviceid, description, Drivetype, mediatype, filesystem, MBfreespaceMBSize, volumedirty, volumename, volumeserialnumber | FT -AutoSize
+$DIObjOut |sort PSComputerName| Select pscomputername, Name, MBfreespace, MBSize, volumename, description, filesystem |FT -AutoSize #, volumedirty, volumeserialnumber, Drivetype, mediatype, deviceid | Out-GridView 
+""
 }
+
+Function Get-WinProdKey
+{
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }   
+    Write-Warning "`nRunning: Get-WmiObject -Query "select * from SoftwareLicensingService" -ComputerName $Global:PC |select __server,OA3xOriginalProductKey"
+    $WPkObjectOut = foreach($Global:pcLine in $Global:pclist)
+    {
+        Write-host "$Global:PC, " -NoNewline -ForegroundColor Green
+        Identify-PCName
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            $WPkObWMI = Get-WmiObject -Query "select * from SoftwareLicensingService" -ComputerName $Global:PC|select __server,OA3xOriginalProductKey
+        $WPkObProperties = @{'pscomputername'=$Global:PC;
+            'OA3xOriginalProductKey'= $WPkObWMI.OA3xOriginalProductKey;
+            'BuildNumber'= $sOS.BuildNumber}
+        New-Object -TypeName PSObject -Prop $WPkObProperties
+        }
+        else
+        {
+            Write-host "$Global:PC, " -NoNewline -ForegroundColor Red
+        }
+    }
+    $WPkObjectOut |FT pscomputername,OA3xOriginalProductKey
+}
+ 
+Function Get-ADPCLogonInfo()
+{
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    #$adpcrslt = 
+    foreach ($pcline in $Global:pclist)
+    {
+        Identify-PCName # Called from Run-PSMenu.ps1
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+        $adpcline = get-adcomputer $Global:pc -properties *|select Name,Enabled,Description,@{n="LastLogonyyyyMM";e={($_.lastlogondate).tostring("yyyyMMdd")}}
+        <#
+        $ADPCLineProperties = @{'pscomputername'=$Global:PC; # $Global:PC
+                'Name'= $adpcline.Name;
+                'Enabled'= $adpcline.Enabled;
+                'Description'= $adpcline.Description;
+                'LastLogonyyyyMM'= $adpcline.LastLogonyyyyMM}
+            New-Object -TypeName PSObject -Prop $ADPCLineProperties
+            #>
+            $adpcResults += $adpcline
+
+        }
+    }
+    $adpcrslt|sort LastLogonyyyyMM |ft
+}
+function List-Resolutions{
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $LRObjectOut =""
+    $LRObjectOut = foreach ($Global:PCLine in $Global:pclist)
+    {
+        Identify-PCName # Called from Run-PSMenu.ps1
+        $i = 0
+        $TC = Test-connection $Global:PC -Count 1 -ErrorAction SilentlyContinue -ErrorVariable TCError 
+        if ($TC.StatusCode -eq 0)
+        {
+            Write-host "." -NoNewline -ForegroundColor Green
+            $VidResList = GWMI win32_videocontroller -ComputerName $Global:PC -ErrorAction SilentlyContinue -ErrorVariable VidCError|where {$_.name -notlike "DameWare*"}|where {$_.currentHorizontalresolution -ne $null}|select * # |select PSComputerName,Name,Current*Resolution,PNPDeviceID
+            foreach ($VidRes in $VidResList)
+            {
+                $HR = $VidRes.CurrentHorizontalResolution
+                $VR = $VidRes.CurrentVerticalResolution
+                $i++
+                $LROBProperties = @{'pscomputername'=$Global:PC;
+                    'HRes'=$HR;
+                    'VRes'=$VR;
+                    'Count'=$i;
+                    'Error'=$VidCError}
+                New-Object -TypeName PSObject -Prop $LROBProperties
+            }
+        }
+    }
+    #"$HR x $VR Resolution"
+    $LRObjectOut |select pscomputername,HRes,VRes,Count,Error |FT
+}
+function List-Monitors{
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    $LDObjectOut =""
+    $LDObjectOut = foreach ($Global:PCLine in $Global:pclist)
+    {
+        $i = 0
+        Identify-PCName # Called from Run-PSMenu.ps1
+        $TC = Test-connection $Global:PC -Count 1 -ErrorAction SilentlyContinue -ErrorVariable TCError 
+        if ($TC.StatusCode -eq 0)
+        {
+            Write-host "." -NoNewline -ForegroundColor Green
+            $MonitorID = gwmi WmiMonitorID -Namespace root\wmi -ComputerName $Global:pc -ErrorAction SilentlyContinue -ErrorVariable MonitorError |select PSComputerName,YearOfManufacture,InstanceName,SerialNumberID,UserFriendlyName,PNPDeviceID
+            $DisplayParam = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorBasicDisplayParams -ComputerName $Global:PC -Property * -ErrorAction SilentlyContinue -ErrorVariable DisplayError |select *
+            foreach($Display in $DisplayParam)
+            {
+                $DisplayInstanceName = ($Display.CimInstanceProperties) |where {$_.Name -eq "InstanceName"}|select Value 
+                $HSize = ($Display.CimInstanceProperties) |where {$_.Name -eq "MaxHorizontalImageSize"}|select Value # horizontal size in cm
+                $VSize = ($Display.CimInstanceProperties) |where {$_.Name -eq "MaxVerticalImageSize"}|select Value # vertical size in cm
+                $DiagSqrd = [math]::Pow($HSize.Value,2) + [math]::Pow($VSize.Value,2) # find the diagonal value from horizontal & vertical values in cm
+                $DiagSize = ([math]::Sqrt($DiagSqrd))/2.54 # (2.54 cm / inch)
+                $DiagSize = [math]::Round($DiagSize,2)
+                $MonitorInfo = $MonitorID|where {$_.InstanceName -eq $DisplayInstanceName.Value} |select PSComputerName,YearOfManufacture,@{n="Model";e={[System.Text.Encoding]::ASCII.GetString($_.UserFriendlyName -ne 00)}}# @{n="Serial Number";e={[System.Text.Encoding]::ASCII.GetString($_.SerialNumberID -ne 00)}}
+                $Model = ($MonitorInfo.Model)
+                $MonYear = ($MonitorInfo.YearOfManufacture)
+                # "Monitor $i ($Model) on $Global:PC is $DiagSize inches (Made $MonYear)"
+                $i++
+                $LDOBProperties = @{'pscomputername'=$Global:PC;
+                    'Model'=$Model;
+                    'DiagSize'=$DiagSize;
+                    'MonYear'=$MonYear;
+                    'Count'=$i;
+                    'Error'=$MonitorError}
+                New-Object -TypeName PSObject -Prop $LDOBProperties
+            }
+        }
+        Else
+        {
+            Write-host "." -NoNewline -ForegroundColor Red
+            foreach ($TCErrorLine in $TCError)
+            {
+                $i++
+                $TC=""
+                $LDOBProperties = @{'pscomputername'=$Global:PC;
+                    'Model'="Unknown";
+                    'DiagSize'="Unknown";
+                    'MonYear'="Unknown";
+                    'Count'=$i;
+                    'Error'=$TCErrorLine}
+                New-Object -TypeName PSObject -Prop $LDOBProperties
+            }
+        }
+    }
+    # $LDObjectOut |gm
+    $LDObjectOut |select PSComputerName,Model,DiagSize,MonYear,Count,Error |ft
+}
+
+
+
+
+
+
+
