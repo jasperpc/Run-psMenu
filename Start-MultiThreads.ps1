@@ -40,7 +40,8 @@
     Clean up comments
 #>
 Param([string]$ScriptFile = $(Read-Host "Enter the script path and filename"), # OK to include list of PCs after filename where applicable
-    [string]$ScriptArgs = $(. .\Get-SystemsList.ps1;Get-PCList), #$null, # Not working yet - have conflicts with pcname arg
+    # [string]$ScriptArgs = $(. .\Get-SystemsList.ps1;Get-PCList), #$null, # Not working yet - have conflicts with pcname arg
+    [string]$ScriptArgs = $(if ($Global:PCList -eq $null){. .\Get-SystemsList.ps1;Get-PCList}), #$null, # Not working yet - have conflicts with pcname arg
     [int]$MaxThreads = 20,
     [int]$Sleeptimer = 500,
     [int]$MaxWaitAtEnd = 600,
