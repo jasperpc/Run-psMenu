@@ -41,7 +41,7 @@ function chPRcolor($Global:PrP1,$Global:PrP2,$Global:PrP3,$global:PrNC)
 }
 function PrintMenu()
 {
-while ($PrintMenuSelect -lt 1 -or $PrintMenuSelect -gt 6)
+while ($PrintMenuSelect -lt 1 -or $PrintMenuSelect -gt 7)
     {
         Clear-Host
         Trap {"Error: $_"; Break;}        
@@ -84,6 +84,12 @@ while ($PrintMenuSelect -lt 1 -or $PrintMenuSelect -gt 6)
             $Global:PrP2 = "Printer Driver ";
             $Global:PrP3 = "Information"
             $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
+    # Printer logs
+        $Global:PRMNum ++;$Get_PrinterLogs=$Global:PRMNum;
+            $Global:PrP1 = " $Global:PRMNum. `t View ";
+            $Global:PrP2 = "Printer Logs ";
+            $Global:PrP3 = "on selected system(s)"
+            $global:PrNC = "Yellow";chPRcolor $Global:PrP1 $Global:PrP2 $Global:PrP3 $global:PrNC
                        
         # Setting up the PrintMenu in this way allows you to move PrintMenu items around and have the numbering change automatically
         # It also allows you to put a word in the middle of the line and have it change color to be easier to see
@@ -101,6 +107,7 @@ while ($PrintMenuSelect -lt 1 -or $PrintMenuSelect -gt 6)
         $Get_PrinterInfo{Clear-Host;Get-PrinterInfo;Reload-PromptPrintMenu}
         $Get_PrinterPortInfo{Clear-Host;Get-PrinterPortInfo;Reload-PromptPrintMenu}
         $Get_PrinterDriverInfo{Clear-Host;Get-PrinterDriverInfo;Reload-PromptPrintMenu}
+        $Get_PrinterLogs{Clear-Host;Get-PrinterLogs;Reload-PromptPrintMenu}
         default
         {
             $PrintMenuSelect = $null
@@ -216,5 +223,86 @@ Function Get-PrinterDriverInfo
     $prin3 = get-printerDriver -computer $Global:PC |select ComputerName,Name|ft -wrap -Autosize
     $prin3
         }
+    }
+}
+# Get Printer logs
+Function Get-PrinterLogs
+{
+<#
+    .NAME
+        Get-PrintLogs.ps1
+    .SYNOPSIS
+        Used to gather Print logs from the print server
+    .Description
+        # Laclede Electric Cooperative
+        # Jason Crockett
+         As a prerequisite, First do the following: "Event Viewer -> Applications and Service Logs -> Microsoft -> Windows -> Print Service -> Operational -> Enable log"
+
+         This code was verified and modified by Jason Crockett - Laclede Electric Cooperative to include a parameter for computername and to export to a CSV file.
+         Most of the code is from BSOD2600 in a post on Tuesday, May 03, 2011 on
+         https://social.technet.microsoft.com/Forums/scriptcenter/en-US/007be664-1d8d-461c-9e0b-d8177106d4f8/vb-script-or-powershell-script-for-auditing-win2k8-print-server?forum=ITCG
+    .Parameter 
+        Comps = "CSV list of computernames"
+        Will default to local computername if parameter is not given in CLI
+    .EXAMPLE
+        .\Get-PrintLogs CompName
+#>
+# Use the following if we want to retain a single PCList across many menu functions 
+if ($Global:PCList -eq $null)
+{
+    Get-PCList
+}
+<# Used when this was a separate script file
+param(
+    [parameter(position=1)]
+    [string]$comps= $env:COMPUTERNAME
+)
+#>
+$Global:PCCnt = ($Global:PCList).Count
+foreach($Global:pcLine in $Global:PCList)
+{
+    Identify-PCName
+    # Only attempt to get information from computers that are reachable with a ping
+    If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue)
+    {
+        Write-Warning "Collecting event logs from $Global:pc..."
+        $Date = (get-date) - (new-timespan -day 8) # modify to get a different timespan of logs
+        $PrintEntries = Get-WinEvent -ea SilentlyContinue -ComputerName $Global:pc -FilterHashTable @{ProviderName="Microsoft-Windows-PrintService"; StartTime=$Date; ID=307}
+        $strOutput = ""
+        $File = "Printing Audit - " + (Get-Date).ToString("yyyy-MM-dd") + ".csv"
+        write-output "Date,Username,Full Name,Client,Printer Name,Print Size,Pages,Document" | Out-File $File -Encoding ascii
+        write-Host "Parsing event log entries..."
+
+        ForEach ($PrintEntry in $PrintEntries)
+         { 
+         #Get date and time of printjob from TimeCreated
+         $Date_Time = $PrintEntry.TimeCreated
+         $entry = [xml]$PrintEntry.ToXml() 
+         $docName = $entry.Event.UserData.DocumentPrinted.Param2
+         $Username = $entry.Event.UserData.DocumentPrinted.Param3
+         $Client = $entry.Event.UserData.DocumentPrinted.Param4
+         $PrinterName = $entry.Event.UserData.DocumentPrinted.Param5
+         $PrinterPort = $entry.Event.UserData.DocumentPrinted.Param6
+         $PrintSize = $entry.Event.UserData.DocumentPrinted.Param7
+         $PrintPages = $entry.Event.UserData.DocumentPrinted.Param8
+
+         #Get full name from AD
+         if ($UserName -gt "")
+         {
+          $DirectorySearcher = New-Object System.DirectoryServices.DirectorySearcher
+          $LdapFilter = "(&(objectClass=user)(samAccountName=${UserName}))"
+          $DirectorySearcher.Filter = $LdapFilter
+          $UserEntry = [adsi]"$($DirectorySearcher.FindOne().Path)"
+          $ADName = $UserEntry.displayName
+         }
+ 
+         #$rawMessage
+         $strOutput = $Date_Time.ToString()+ "," +$UserName+ "," +$ADName+ "," +$Client+ "," +$PrinterName+ "," +$PrintSize+ "," +$PrintPages+ "," +$docName
+         write-output $strOutput | Out-File $File -append  
+ 
+         }
+
+         Write-Host "The file name is $File"
+         }
     }
 }
