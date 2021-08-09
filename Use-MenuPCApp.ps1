@@ -181,14 +181,15 @@ Function get-KB()
     }
     $ghf = $null
     $HotFixErr=$null
-    # [array]$ghf_total = $null
+    $PCCount = ($Global:pclist).count
     $kb = Read-host "`nEnter a KB number or a partial number with wildcards not including the KB"
+    $HFFileName = ".\$CDate" + "_KB$kb.csv"
     $ObjectOut = foreach($Global:pcline in $Global:pclist)
     {
         Identify-PCName
         If (Test-Connection $Global:pc -Count 1 -Quiet)
         {
-            get-hotfix -computername $Global:pc |where {$_.HotFixID -like "KB$kb"}|sort InstalledOn |out-gridview -Title "Hotfix: KB$KB"
+            get-hotfix -computername $Global:pc |where {$_.HotFixID -like "KB$kb"}|sort InstalledOn|Select PSComputerName,Source,Description,HotFixID,InstalledBy,InstalledOn|Export-Csv $HFFileName -Append -NoClobber -NoTypeInformation #|out-gridview -Title "Hotfix: KB$KB"
             $ghf = get-hotfix -ComputerName $Global:pc -ErrorAction SilentlyContinue -ErrorVariable HotFixErr |where {$_.Description -like "*Security*"} |sort InstalledOn |select PSComputerName, Description, HotFixID, InstalledBy, InstalledOn -Last 1
             if ($ghf)
             {
@@ -208,7 +209,7 @@ Function get-KB()
     }
     Read-Host "Hit [Enter] to view the following most recent security updates applied to these systems."
     $ObjectOut|sort InstalledOn,PSComputerName -Descending|select pscomputername,HotFixID,Description,InstalledOn,installedBy,HotFixErr|ft -AutoSize -Wrap
-    # $HotFixErr=$null
+    Write-Warning "HotFixes appended to $HFFileName"
 }
 
 Function get-apps()
