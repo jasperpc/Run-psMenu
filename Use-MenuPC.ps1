@@ -51,7 +51,7 @@ Function chPCcolor($Script:PCp1,$Script:PCp2,$Script:PCp3,$Script:PCNC){
 
 Function PCmenu()
 {
-    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 22)
+    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 24)
     {
         Trap {"Error: $_"; Break;}        
         $PCMNum = 0;Clear-host |out-null
@@ -111,6 +111,11 @@ Function PCmenu()
             $Script:PCp1 =" $PCMNum. `t Retrieving ";
 		    $Script:PCp2 = "BitLocker Recovery Key ";
 		    $Script:PCp3 = "information from selected PCs "; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
+# View PC Startups
+        $PCMNum ++;$Get_PCLogonDate = $PCMNum;
+            $Script:PCp1 =" $PCMNum. `t Review PC ";
+		    $Script:PCp2 = "Last Logon date ";
+		    $Script:PCp3 = "from selected PCs "; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
 # View Registry property value
         $PCMNum ++;$Manage_HKLM = $PCMNum;
             $Script:PCp1 =" $PCMNum. `t View ";
@@ -125,6 +130,11 @@ Function PCmenu()
         $PCMNum ++;$Call_Get_SysEvents = $PCMNum;
 		    $Script:PCp1 =" $PCMNum. `t View";
 		    $Script:PCp2 = "Event Logs ";
+		    $Script:PCp3 = ""; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
+# PS ScriptBlock logs
+        $PCMNum ++;$Get_PSLogs = $PCMNum;
+		    $Script:PCp1 =" $PCMNum. `t View";
+		    $Script:PCp2 = "PowerShell ScriptBlock Logs ";
 		    $Script:PCp3 = ""; $Script:PCNC = "yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
 # Check for Active RDP sessions on Domain servers
         $PCMNum ++;$Get_RDPStats=$PCMNum;
@@ -225,10 +235,12 @@ switch($PCmenuselect)
     $Get_OldDCPCs{$PCmenuselect = $null;Get-OldDCPCs;reload-PromptPCmenu}
     $Test_CritSysLive{Test-CritSysLive;reload-PromptPCmenu}
     $Get_ADPcStarts{$PCmenuselect = $null;Get-ADPcStarts;reload-PromptPCmenu}
-    $Retrieve_BitlockerKey{$PCmenuselect = $null;Retrieve-BitlockerKey;reload-PromptPCmenu}
+    $Retrieve_BitlockerKey{Clear-Host;$PCmenuselect = $null;Retrieve-BitlockerKey;reload-PromptPCmenu}
+    $Get_PCLogonDate{Clear-Host;$PCmenuselect = $null;Get-PCLogonDate;reload-PromptPCmenu}
     $Manage_HKLM{Manage-HKLM;reload-PromptPCmenu}
     $Reset_IE{$PCmenuselect = $null;Reset-IE;reload-PromptPCmenu}
     $Call_Get_SysEvents{$PCmenuselect = $null;Call-Get-SysEvents $Global:PCList $Global:Cred;reload-PromptPCmenu}
+    $Get_PSLogs{$PCmenuselect = $null;Get-PSLogs ;reload-PromptPCmenu}
     $Get_RDPStats{Get-RDPStats;reload-PromptPCmenu}
     $Enable_RDP{Enable-RDP;reloadmenu}
     $Get_PCProcess{Clear-Host;Nullify-Prompts;Write-Output $Global:PCPCMD;$Global:PCP = "Yes";Get-PCInfo $Global:PCP <#Get-PCProcess#>;reload-PromptPCmenu}
@@ -283,6 +295,41 @@ Function Call-Get-SysEvents()
             if ($EntryLevel_Type -eq "") {$EntryLevel_Type = "Error"}
             if ($cnt -eq "") {$cnt = 50}
             Invoke-Expression ".\Get-SysEvents.ps1 -PCList $Global:PCList -WinLogName $WinLogName -EntryLevel_Type $EntryLevel_Type -cnt $cnt"
+        }
+    }
+}
+
+
+Function Get-PSLogs()
+{ 
+    <#
+    View PowerShell Scriptblock logging
+    https://community.idera.com/database-tools/powershell/powertips/b/tips#pi619=17
+.TODO
+    Expand usefulness with the following blogs on the above idera.com site:
+        Hardening Script Block Logging   (pg 17,18 2018)
+        Enabling Script Block Logging   (pg 17, 2018)
+        Understanding Script Block Logging (pg 20 Part 1 - 7, 2018)
+#>
+    Clear-Host
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    foreach ($Global:PCLine in $Global:PCLIst)
+    {
+    $GWEPSLogs = $null
+    $PSLogErr = $null
+    Identify-PCName
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            if ($Global:pclist -eq "") {$Global:pclist = [environment]::machinename}
+            $logInfo = @{ ProviderName="Microsoft-Windows-PowerShell"; Id = 4104 }
+            $GWEPSLogs = get-winevent -ComputerName $Global:pc -filterhashtable $loginfo -ErrorAction SilentlyContinue -ErrorVariable PSLogErr 
+            if (!$GWEPSLogs)
+                {Write-Warning $PSLogErr}
+            else
+                {$GWEPSLogs|select-object MachineName,TimeCreated,UserID, @{n="Message";e={($_ | select -ExpandProperty Message)-join ','}}}
         }
     }
 }
@@ -860,7 +907,6 @@ if (($MidPath = Read-Host "`nType the path exclude the root and the property [En
 
 Function Retrieve-BitlockerKey
 {
-    Clear-Host
     # Using the following to retain a single PCList across many menu functions 
     if ($Global:PCList -eq $null)
     {
@@ -892,6 +938,14 @@ Function Retrieve-BitlockerKey
     [console]::beep(559,100)
 
 }
+Function Get-PCLogonDate{
+    $adpcrslt = foreach ($Global:pcline in $Global:pclist) 
+    {
+        Identify-PCName
+        Get-ADComputer $Global:PC -properties *|select Name,Enabled,Description,@{n="LastLogon";e={($_.lastlogondate).tostring("yyyyMMdd")}}
+    }
+    $adpcrslt |sort LastLogon |select Name,LastLogon,Description,Enabled|FT
+}
     <#
     # Use the following if we want to retain a single PCList across many menu functions 
     if ($Global:PCList -eq $null)
@@ -903,5 +957,3 @@ Function Retrieve-BitlockerKey
     {
     }
     #>
-
-    
