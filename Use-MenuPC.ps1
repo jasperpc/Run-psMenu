@@ -51,7 +51,7 @@ Function chPCcolor($Script:PCp1,$Script:PCp2,$Script:PCp3,$Script:PCNC){
 
 Function PCmenu()
 {
-    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 24)
+    while ($PCmenuselect -lt 1 -or $PCmenuselect -gt 25)
     {
         Trap {"Error: $_"; Break;}        
         $PCMNum = 0;Clear-host |out-null
@@ -183,6 +183,12 @@ Function PCmenu()
             $Script:PCp2 = "Certificates ";
             $Script:PCp3 = "on a system (possibly requires runas Administrator to include local system)"
             $Script:PCNC = "Yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
+# Get-WinLicense
+        $PCMNum ++;$Get_WinLicense=$PCMNum;
+            $Script:PCp1 = " $PCMNum. `t View ";
+            $Script:PCp2 = "Win Product Key ";
+            $Script:PCp3 = "on a system (possibly requires runas Administrator to include local system)"
+            $Script:PCNC = "Yellow";chPCcolor $Script:PCp1 $Script:PCp2 $Script:PCp3 $Script:PCNC
 # View WinSAT / Windows Experience Index...
         $PCMNum ++;$Get_WinSAT = $PCMNum;
             $Script:PCp1 =" $PCMNum. `t View ";
@@ -249,6 +255,7 @@ switch($PCmenuselect)
     $Active_ScrnSav{Active-ScrnSav;reload-PromptPCmenu}
     $Get_ScheduledTaskInformation{Get-ScheduledTaskInformation;reload-PromptPCmenu}
     $View_Certificates{View-Certificates;reload-PromptPCmenu}
+    $Get_WinLicense{Get-WinLicense;reload-PromptPCmenu}
     $Get_WinSAT{$PCmenuselect = $null;get-winSAT;reload-PromptPCmenu}
 
         default
@@ -368,7 +375,11 @@ Function Enable-RDP()
 {
 #   $Cred = Get-Credential
     Write-Warning "Enter PC to enable RDP on"
-    Get-PCList
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
     foreach ($Global:pcLine in $Global:PClist)
     {
         Identify-PCName
@@ -378,6 +389,35 @@ Function Enable-RDP()
     Start-Sleep -Seconds 5
 
 }
+
+Function Get-WinLicense()
+{
+    # README: Find Win product key on PC. Can be used when sysprepping to change product key based on bios key
+    Clear-Host
+    $err=@()
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    Write-Warning '(Get-WmiObject -computerName $Global:PC -ErrorVariable err -query '‘select * from SoftwareLicensingService'’).OA3xOriginalProductKey'
+    $OPKObjectOut = foreach ($Global:PCLine in ($Global:PCList))
+    {
+    Identify-PCName
+    If (Test-Connection $Global:pc -Count 1 -Quiet -ErrorAction SilentlyContinue) # Only attempt to get information from computers that are reachable with a ping
+        {
+        Write-Host "." -nonewline
+        $3OPK = (Get-WmiObject -computerName $Global:PC -ErrorVariable err -query ‘select * from SoftwareLicensingService’).OA3xOriginalProductKey
+        $EE = $err.Exception
+            $OBProperties = @{'pscomputername'=$Global:PC;
+                'OA3xOriginalProductKey'=$3OPK;
+                'Error'=$EE}
+            New-Object -TypeName PSObject -Prop $OBProperties
+        }
+    }
+    $OPKObjectOut |select pscomputername, OA3xOriginalProductKey, Error  |ft -AutoSize -Wrap # |export-csv -Path $ObCSVFile -Append -NoTypeInformation
+}
+
 
 Function Get-pcinfo($Global:BSN, $Global:OSI, $Global:CPUI, $Global:MI, $PI, $PPI, $Global:DI, $Global:NICS, $Global:PDI, $Global:PCP)
 {
@@ -400,7 +440,11 @@ Function Get-ProcessStatus()   # not ready yet!!!
 {
     Clear-Host
     Write-Warning "From which computer(s) do you want to retrieve the status of the process?"
-    Get-PCList
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
     foreach ($Global:pcLine in $Global:PCList)
     {
         Identify-PCName
