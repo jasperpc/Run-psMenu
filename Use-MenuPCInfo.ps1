@@ -49,7 +49,7 @@ Function chPCIcolor($Script:PCI1,$Script:PCI2,$Script:PCI3,$Script:PCINC){
 
 Function PCIMenu()
 {
-    while ($PCIMenuselect -lt 1 -or $PCIMenuselect -gt 16)
+    while ($PCIMenuselect -lt 1 -or $PCIMenuselect -gt 17)
     {
         Trap {"Error: $_"; Break;}        
         $PCIMNum = 0;Clear-host |out-null
@@ -142,6 +142,12 @@ Function PCIMenu()
             $Script:PCI2 = "AD Logon ";
             $Script:PCI3 = "Information for select systems"
             $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
+    # View System NTP Source Information (Time Server)
+        $PCIMNum ++;$Get_NTPSourceInfo=$PCIMNum;
+            $Script:PCI1 = " $PCIMNum. `t View ";
+            $Script:PCI2 = "NTP server ";
+            $Script:PCI3 = "Information for select systems"
+            $Script:PCINC = "Yellow";chPCIcolor $Script:PCI1 $Script:PCI2 $Script:PCI3 $Script:PCINC
     #    "Discover boot times (from select systems)"
         $PCIMNum ++;$BootTimes=$PCIMNum;
             $Script:PCI1 = " $PCIMNum. `t Discover ";
@@ -172,6 +178,7 @@ switch($PCIMenuselect)
         $Get_WinProdKey{Clear-Host;Get-WinProdKey;Reload-PromptPCInfoMenu}
         $Get_NonDomPCinfo{Clear-Host;Get-NonDomPCinfo;Reload-PCInfoMenu}
         $Get_ADPCLogonInfo{Clear-Host;Get-ADPCLogonInfo;Reload-PromptPCInfoMenu}
+        $Get_NTPSourceInfo{Clear-Host;Get-NTPSourceInfo;Reload-PromptPCInfoMenu}
         $BootTimes{Clear-Host;.\Start-MultiThreads.ps1 .\Get-BootTime.ps1;Reload-PromptPCInfoMenu} # Called Externally
         default
         {
@@ -479,6 +486,29 @@ Function Get-ADPCLogonInfo()
         }
     }
     $adpcrslt|sort LastLogonyyyyMM |ft
+}
+# View NTP Source information for selected systems
+function Get-NTPSourceInfo{
+# Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    
+Write-Warning 'Running: w32tm /query /computer:$Global:PC /configuration | ?{$_ -match ''ntpserver:''} | %{($_ -split ":\s\b")[1]}'
+$ntpsResult = foreach ($Global:PCLine in $Global:PCList)
+    {
+        Identify-PCName # Called from Run-PSMenu.ps1
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            # $ntps = w32tm /query /computer:$Global:PC /SOURCE |new-object psobject -property @{Server = $Global:PC;NTPSource = $ntps}
+            $ntps = w32tm /query /computer:$Global:PC /configuration | ?{$_ -match 'ntpserver:'} | %{($_ -split ":\s\b")[1]}
+            new-object psobject -property @{Server = $Global:PC;NTPSource = $ntps}
+            # w32tm /config /computer:$Global:PC /manualpeerlist:"2012DC.lec.lan LECv002.lec.lan tick.usno.navy.mil 0.us.pool.ntp.org" /syncfromflags:MANUAL
+            # Get-Service -Name W32Time -ComputerName $Global:PC | Restart-Service -Confirm
+        }
+    }
+$ntpsResult |ft -AutoSize
 }
 function List-Resolutions{
     # Use the following if we want to retain a single PCList across many menu functions 
