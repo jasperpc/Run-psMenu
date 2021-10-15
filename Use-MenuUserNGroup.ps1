@@ -69,7 +69,7 @@ Function chcolor($Script:UnGp1,$Script:UnGp2,$Script:UnGp3,$Script:UnGNC){
 # (Get-ADUser -filter 'SamAccountName -like $ADUser1' -Properties * |Select-Object -property @{n="ADUserInfo";e={$_.SamAccountName,$_.memberof}}|select -ExpandProperty ADUserInfo)
 Function UnGMenu()
 {
-    while ($UnGMenuselect -lt 1 -or $UnGMenuselect -gt 16)
+    while ($UnGMenuselect -lt 1 -or $UnGMenuselect -gt 17)
     {
         Trap {"Error: $_"; Break;}        
         $UnGMNum = 0;Clear-host |out-null
@@ -118,6 +118,11 @@ Function UnGMenu()
 		    $Script:UnGp1 =" $UnGMNum. `tEnter Group ";
 		    $Script:UnGp2 = "to view Members ";
 		    $Script:UnGp3 = "assigned to group."; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
+# User Members in a localgroup
+        $UnGMNum ++;$Get_LocalGroupMembership = $UnGMNum;
+		    $Script:UnGp1 =" $UnGMNum. `tEnter name of ";
+		    $Script:UnGp2 = "LocalGroup ";
+		    $Script:UnGp3 = "to view Members."; $Script:UnGNC = "yellow";chcolor $Script:UnGp1 $Script:UnGp2 $Script:UnGp3 $Script:UnGNC
 # List Empty Active Directory Groups
         $UnGMNum ++;$Find_EmptyGroups = $UnGMNum;
 		    $Script:UnGp1 =" $UnGMNum. `tList all";
@@ -168,6 +173,7 @@ Function UnGMenu()
         $Find_UsrsOnPCs{$UnGMenuselect=$null;Find-UsrsOnPCs;reload-PromptUnGMenu} # Good one to multi-thread
         $Inv_Manage_ADUsers{$UnGMenuselect=$null;Invoke-Expression ".\Manage-ADUsers.ps1";reload-NoPromptUnGMenu}
         $Get_GroupMembership{$UnGMenuselect=$null;Clear-Host;Get-GroupMembership;reload-PromptUnGMenu}
+        $Get_LocalGroupMembership{$UnGMenuselect=$null;Clear-Host;Get-LocalGroupMembership;reload-PromptUnGMenu}
         $Find_UserPCs{$UnGMenuselect=$null;Find-UserPCs;reload-PromptUnGMenu}
         $Get_UserGroupMembership{$UnGMenuselect=$null;Get-UserGroupMembership;reload-PromptUnGMenu}
         $Find_EmptyGroups{$UnGMenuselect=$null;Find-EmptyGroups;reload-PromptUnGMenu}
@@ -309,6 +315,70 @@ $ADGPrompt = (Read-Host "Enter name of one group for which you wish to see membe
     }
         Associate-UserAndPC
         $ADG = $null
+}
+Function Get-LocalGroupMembership()# Include PC Name where User name is listed in PC obj Description
+{
+param(
+[Parameter(Mandatory=$False)]
+
+$GPrompt = (Read-Host "Enter name of one group for which you wish to see members. (ex. Domain Admins)")
+)
+ # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        #$Global:PCList = (Get-ADComputer -Filter * |select Name)
+        Get-PCList
+    }
+    foreach ($Global:pcLine in $Global:PCList)
+    {
+        Identify-PCName
+        $Global:PC;Invoke-Command -ScriptBlock { Get-LocalGroupMember administrators } -ComputerName ($Global:PC).Name | select PSComputerName, Name, SID, PrincipalSource |FT -AutoSize -Wrap
+    }
+
+<#
+    $ADG = Get-ADGroup $GPrompt -Properties * | Select-Object -property @{n="ADGroupInfo";e={$_.distinguishedname,$_.members}} |select -ExpandProperty ADGroupInfo
+    $adgm = $null
+    Write-Warning "`nRunning:`tGet-ADGroupMember -Identity $ADG"
+    # 
+    $adgm = Get-ADGroupMember -Identity $GPrompt -Recursive |sort ObjectClass,Name,Description # |select * # Name,SamAccountname,distinguishedName,ObjectClass
+
+    # Need to change the above configuration to also pull in Contacts 
+    # $adgm = Get-ADObject -filter * -Properties MemberOf,Mail |where {$GPrompt -contains $_.memberof}
+    $AUnP = foreach ($adgmRec in $adgm)
+    {
+        If ($adgmRec.ObjectClass -eq "user" -or $adgmRec.ObjectClass -eq "computer")
+        {
+            $adgmpcname = $adgmRec.Name
+            $adgmRecObClass = $adgmRec.ObjectClass
+            $ADPCDescription = Get-ADcomputer -Filter 'Name -eq $adgmpcname' -Properties * -ErrorAction SilentlyContinue |select Name,Description
+            $SAN = ($adgmRec |select SamAccountName).SamAccountName
+            $OBName =($adgmRec |select Name).Name
+            $OBDNAme = ($adgmRec |select DistinguishedName).DistinguishedName
+            $OBDescription =($ADPCDescription |select Description).Description
+            $ObClass = $adgmRecObClass #).Class
+            If ($adgmRec.ObjectClass -eq "user")
+            {
+                $OBProxyAddress = Get-ADUser -Filter 'SamAccountName -eq $SAN' -Properties * |select UserPrincipalName #ProxyAddresses
+                $OBProxyAd = $OBProxyAddress.ProxyAddresses
+                Write-Host "($SAN)`t$OBName`t$OBProxyAd" -ForegroundColor Green
+            }
+            If ($adgmRec.ObjectClass -eq "computer")
+            {
+                Write-Host "`t$OBName`t$OBDescription" -ForegroundColor Green
+            }
+            $OBProperties = @{'SamAccountName'=$SAN;
+                        'Name'=$OBName;
+                        'DistinguishedName'=$OBDNAme;
+                        'Description' = $OBDescription;
+                        'OBClass' = $ObClass;
+                        'OBProxyAd' = $OBProxyAd}
+        }
+        New-Object -TypeName PSObject -Prop $OBProperties
+        $ADPCDescription = $null
+    }
+        Associate-UserAndPC
+        $ADG = $null
+#>
 }
 Function Get-UserGroupMembership()
 {
