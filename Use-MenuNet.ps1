@@ -1,4 +1,4 @@
-﻿<#
+<#
 .NAME
     Use-MenuNet.ps1
 .SYNOPSIS
@@ -324,20 +324,31 @@ Function Get-hostname()
     $VIPObjectOut = foreach($Global:pcline in $Global:pclist)
     {
         Identify-PCName
-        if (Test-ValidIP $Global:pc)
+        Try #        if (Test-ValidIP $Global:pc)
         {
+         Test-ValidIP $Global:pc
+         # } # commented from if
+            Try {
             $GHAddress = [System.Net.DNS]::GetHostByAddress($Global:PC)
                 $VIPOBProperties = @{'HostName'=$GHAddress.HostName;
-                'AddressList'=$GHAddress.AddressList;
-                'Aliases'=$GHAddress.Aliases;
-                'Query'=$Global:PC}
+                'AddressList'=$GHAddress.AddressList.IPaddressToString;
+                # 'Aliases'=$GHAddress|select -ExpandProperty Aliases;
+                'Query'="Get host $Global:PC by address"}
+            }
+            Catch {
+            $VIPOBProperties = @{'HostName'=""; # Revised due to overflow from previous response 'HostName'=$Global:PC;
+                'AddressList'=""; # Revised due to overflow from previous response $GHAddress.AddressList;
+                # 'Aliases'=$GHAddress.Aliases; # Revised due to overflow from previous response $GHAddress.Aliases;
+                'Query'="Get host $Global:PC by address"}
+            }
         New-Object -TypeName PSObject -Prop $VIPOBProperties
         }
-        Else
+        # Else
+        Catch
         {
             $VIPOBProperties = @{'HostName'=$Global:PC;
-                'AddressList'=$GHAddress.AddressList;
-                'Aliases'=$GHAddress.Aliases;
+                'AddressList'=$GHAddress.AddressList.IPaddressToString;
+                # 'Aliases'=$GHAddress.Aliases; # Revised due to overflow from previous response $GHAddress.Aliases;
                 'Query'="$Global:PC is not a Valid IP Address"}
         New-Object -TypeName PSObject -Prop $VIPOBProperties
         }
@@ -355,13 +366,14 @@ Function Test-ValidIPPrompt # Depends on Test-ValidIP
     }
 #>
 try {
-        $Global:pcline = Read-host "`nType in a valid IP address to find information about"
-        Test-ValidIP $Global:pcline -erroraction "stop"
+        $Global:PC = Read-host "`nType in a valid IP address to find information about"
+        Test-ValidIP $Global:PC -erroraction "stop"
             
     }
 catch
     {
         $Another = Read-Host "`nInvalid IP Address. Type Y to enter another."
+        $Global:PC = "Test-ValidIPPrompt_Catch"
         while($Another -eq "Y")
             {
                 Test-ValidIPPrompt
@@ -373,9 +385,9 @@ Function Test-ValidIP # Called from Test-ValidIPPrompt, Tests input for valid IP
 # Manually this is called from Test-ValidIPPrompt
 # This function illustrates parameter validation and using RegEx to validate IPv4 IP addresses including broadcast address
 param ([ValidatePattern('^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')]
-[string]$Global:pcline
+[string]$Global:PC # should this be $Global:PC?
 )
-    Write-Output "$Global:pcline is a valid IP address. One moment please."
+    Write-Output "$Global:PC is a valid IP address. One moment please." # Should this be $Global:PC ?
 }
 # Wait for  System port number to come alive
 Function Wait-Live()
