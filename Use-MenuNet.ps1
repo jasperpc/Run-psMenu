@@ -5,9 +5,9 @@
     Provide menu system for running Powershell scripts
 .DESCRIPTION
  Menu design initially adopted from : https://quickclix.wordpress.com/2012/08/14/making-powershell-menus/
- 2017-03-03
+ 2021-12-15
 
- Written by Jason Crockett - Laclede Electric Cooperative
+ Written by Jason Crockett - Sho-Me Electric Power Cooperative
 
  use Ctrl+J to bring up "snippets" that can be inserted into code
  Tips from MVA
