@@ -41,7 +41,7 @@ function chAcolor($Script:PCAp1,$Script:PCAp2,$Script:PCAp3,$Script:PCANC)
 }
 function PCAppMenu()
 {
-while ($PCAppMenuSelect -lt 1 -or $PCAppMenuSelect -gt 8)
+while ($PCAppMenuSelect -lt 1 -or $PCAppMenuSelect -gt 9)
     {
         Clear-Host
         Trap {"Error: $_"; Break;}        
@@ -64,6 +64,12 @@ while ($PCAppMenuSelect -lt 1 -or $PCAppMenuSelect -gt 8)
         $Script:PCAMNum ++;$Get_PCList=$Script:PCAMNum;$Script:PCAp1 =" $Script:PCAMNum.  `t Select";
             $Script:PCAp2 = "systems to use ";$Script:PCAp3 = "with commands on menu ($Global:PCCnt Systems currently selected).";
             $Script:PCANC = "Cyan";chPCcolor $Script:PCAp1 $Script:PCAp2 $Script:PCAp3 $Script:PCANC
+# List Application and associated GUIDs
+        $Script:PCAMNum ++;$List_AppGUIDs=$Script:PCAMNum;
+            $Script:PCAp1 = " $Script:PCAMNum. `t List ";
+            $Script:PCAp2 = "GUIDs associated ";
+            $Script:PCAp3 = "with specific application (Requires Elevation)"
+            $Script:PCANC = "Yellow";chPCcolor $Script:PCAp1 $Script:PCAp2 $Script:PCAp3 $Script:PCANC
 # List most recent MS update for the servers/systems
         $Script:PCAMNum ++;$List_RecentUpdate=$Script:PCAMNum;
             $Script:PCAp1 = " $Script:PCAMNum. `t List ";
@@ -108,6 +114,7 @@ while ($PCAppMenuSelect -lt 1 -or $PCAppMenuSelect -gt 8)
         $AExit{$PCAppMenuSelect=$null;reload-PCmenu}
         $GCred{Clear-Host;Get-Cred;$PCAppmenuselect = $null;Reload-PCAppMenu} # Called from Run-PSMenu.ps1
         $Get_PCList{Clear-Host;Get-PCList;Reload-PCAppMenu}
+        $List_AppGUIDs{List-AppGUIDs;Reload-PromptPCAppMenu}
         $List_RecentUpdate{List-RecentUpdate;Reload-PromptPCAppMenu}
         $get_KB{get-KB;Reload-PromptPCAppMenu}
         $get_apps{Clear-Host;get-apps;Reload-PromptPCAppMenu}
@@ -138,6 +145,47 @@ function Reload-PCAppMenu()
 {
         $PCAppMenuSelect = $null
         PCAppMenu
+}
+function List-AppGUIDs()
+{
+    Clear-Host
+    $SN=$null
+    $OBAGUIDs=$null
+    $OBAGUID = $null
+    $IDN = Read-Host "Enter a GUID to find its application or * for a list of all app/GUID associations"
+    # Use the following if we want to retain a single PCList across many menu functions 
+    if ($Global:PCList -eq $null)
+    {
+        Get-PCList
+    }
+    # $servers = Get-ADComputer -Filter {OperatingSystem -like "*server*" -and Enabled -eq $true}
+    # $servers = Get-ADComputer -Filter {Enabled -eq $true}
+    Write-Host "Searching for all App/GUID combos or the Application associated with $IDN $Global:PCCnt Systems"
+    $OBAppGUIDs = foreach ($Global:pcLine in $Global:pclist)
+    {
+        Identify-PCName
+        If (Test-Connection $Global:pc -Count 1 -Quiet)
+        {
+            Write-Host "$Global:pc, " -NoNewline -ForegroundColor Green
+            $OBAGUID = get-wmiobject Win32_Product -ComputerName $Global:PC -Credential $Cred -ErrorAction SilentlyContinue |where {$_.IdentifyingNumber -like $IDN}
+            foreach ($OBAGUIDLine in $OBAGUID) # $OBAppGUIDList = 
+            {
+                $OBAGUIDProperties = @{'pscomputername'=$Global:PC;
+                        'ProductCode'=$OBAGUIDLine.IdentifyingNumber;
+                        'Name'=$OBAGUIDLine.Name;
+                        'LocalPackage'=$OBAGUIDLine.LocalPackage}
+                New-Object -TypeName PSObject -Prop $OBAGUIDProperties
+            }
+        }
+        Else
+        {
+            Write-Host "$Global:pc, " -NoNewline -ForegroundColor Red
+        }
+    }
+    $OBAGCount = ($OBAppGUIDs | Measure-Object).Count
+    $OBAppGUIDs | Sort-Object -Property Name |FT PSComputerName, ProductCode, Name, LocalPackage -AutoSize
+    "`n"
+    Write-Warning "$OBAGCount results found"
 }
 
 Function List-RecentUpdate()
